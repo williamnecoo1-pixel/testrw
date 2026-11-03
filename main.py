@@ -1,5 +1,7 @@
 import re
 import urllib.request
+import base64
+import json
 
 # ============================================================
 # 1. قائمة المصادر (RAW URLs)
@@ -87,31 +89,56 @@ def fetch_raw_links() -> str:
 # 3. الفلترة والتعديل
 # ============================================================
 def filter_and_modify_xhttp(text: str):
-    # 1. استخراج جميع الروابط
-    all_configs = re.findall(r'(?:vless|trojan)://[^\s]+', text)
+    # 1. استخراج جميع الروابط (VLESS, Trojan, VMess)
+    all_configs = re.findall(r'(?:vless|trojan|vmess)://[^\s]+', text)
     
     filtered_links = []
     
     for link in all_configs:
         link_lower = link.lower()
         
-        # 2. شروط الفلترة: XHTTP + TLS + Port 443
-        is_xhttp = 'type=xhttp' in link_lower
-        is_tls = 'security=tls' in link_lower
-        # التاكد من أن البورت هو 443 (سواء كان مكتوب :443 أو port=443)
-        is_443 = ':443?' in link_lower or ':443#' in link_lower or ':443/' in link_lower or link_lower.endswith(':443')
-        
-        # 3. شرط الكلمات المفتاحية ديال X (يلا بغيتي تحيد هاد الشرط، غير امسح هاد السطر)
-        is_x_related = any(keyword in link_lower for keyword in X_KEYWORDS)
-        
-        if is_xhttp and is_tls and is_443 and is_x_related:
+        # شرط الكلمات المفتاحية ديال X
+        if not any(keyword in link_lower for keyword in X_KEYWORDS):
+            continue
             
-            # 4. تبديل الـ IP
-            # هاد الـ Regex كيقلب على أي حاجة جات مورا @ وقبل : (البورت) وكيبدلها بالـ IP الجديد
-            # مثال: @1.2.3.4:443 كتولي @104.18.37.127:443
-            new_link = re.sub(r'(?<=@)[^:/]+(?=:\d+)', NEW_IP, link)
+        # === معالجة VLESS و Trojan ===
+        if link_lower.startswith('vless://') or link_lower.startswith('trojan://'):
+            is_xhttp = 'type=xhttp' in link_lower
+            is_tls = 'security=tls' in link_lower
+            is_443 = ':443?' in link_lower or ':443#' in link_lower or ':443/' in link_lower or link_lower.endswith(':443')
             
-            filtered_links.append(new_link)
+            if is_xhttp and is_tls and is_443:
+                # تبديل الـ IP
+                new_link = re.sub(r'(?<=@)[^:/]+(?=:\d+)', NEW_IP, link)
+                filtered_links.append(new_link)
+                
+        # === معالجة VMess (مشفر بـ Base64) ===
+        elif link_lower.startswith('vmess://'):
+            try:
+                # 1. فك التشفير
+                b64_data = link[8:]
+                # إضافة padding يلا كان ناقص
+                b64_data += '=' * (-len(b64_data) % 4)
+                decoded_json = base64.b64decode(b64_data).decode('utf-8')
+                config = json.loads(decoded_json)
+                
+                # 2. التحقق من الشروط داخل JSON
+                net = config.get('net', '').lower()
+                tls = config.get('tls', '').lower()
+                port = str(config.get('port', ''))
+                
+                if net == 'xhttp' and tls == 'tls' and port == '443':
+                    # 3. تبديل الـ IP
+                    config['add'] = NEW_IP
+                    
+                    # 4. إعادة التشفير لـ Base64
+                    new_json_str = json.dumps(config, ensure_ascii=False)
+                    new_b64 = base64.b64encode(new_json_str.encode('utf-8')).decode('utf-8')
+                    filtered_links.append(f"vmess://{new_b64}")
+                    
+            except Exception as e:
+                # تخطي الروابط الخاطئة فـ VMess
+                pass
 
     # إزالة التكرار
     return list(dict.fromkeys(filtered_links))
@@ -123,15 +150,15 @@ if __name__ == "__main__":
     print("🔄 جاري جمع الروابط من المصادر...")
     raw_content = fetch_raw_links()
 
-    print(f"\n🔍 جاري الفلترة: (XHTTP + TLS + 443) وتبديل الـ IP بـ {NEW_IP}...")
+    print(f"\n🔍 جاري الفلترة (VLESS/Trojan/VMess + XHTTP + TLS + 443) وتبديل الـ IP بـ {NEW_IP}...")
     x_links = filter_and_modify_xhttp(raw_content)
 
-    # حفظ النتائج
-    with open("xhttp_tls_443_x_configs.txt", "w", encoding="utf-8") as f:
+    # حفظ النتائج فـ الملف الصحيح
+    with open("reality_configs.txt", "w", encoding="utf-8") as f:
         for link in x_links:
             f.write(link + "\n")
 
-    print(f"\n✅ تم حفظ {len(x_links)} كونفيغ مطابق فـ الملف: xhttp_tls_443_x_configs.txt")
+    print(f"\n✅ تم حفظ {len(x_links)} كونفيغ مطابق فـ الملف: reality_configs.txt")
     
     # طباعة أول 10 ديال الروابط باش تشوف بعينك النتيجة
     if x_links:
