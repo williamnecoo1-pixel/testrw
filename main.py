@@ -1,10 +1,19 @@
+
+     
 import re
 import urllib.request
+import base64
+from collections import Counter
 
-# ============================================================
-# 1. قائمة المصادر (RAW URLs)
-# ============================================================
+# المصادر ديالك (نفس القائمة اللي عندك)
 SOURCES = [
+    "https://github.com/morpheusadam/v2ray-config/raw/refs/heads/main/subs/bundles/vless.txt",
+    "https://github.com/liMilCo/v2r/raw/refs/heads/main/new_configs.txt",
+    "https://github.com/Delta-Kronecker/V2ray-Config/raw/refs/heads/main/config/all_configs.txt",
+    "https://github.com/0xRadikal/Free-v2ray-Configs/raw/refs/heads/main/all/configs.txt",
+    "https://github.com/MaxFreudDrethe/VCC/raw/refs/heads/main/configs/tls.txt",
+    "https://github.com/barry-far/V2ray-Config/raw/refs/heads/main/All_Configs_Sub.txt",
+    "https://github.com/Mohamedhnini-a/testeur/raw/refs/heads/main/working_configs.txt",
      "https://github.com/morpheusadam/v2ray-config/raw/refs/heads/main/subs/bundles/vmess.txt",
     "https://github.com/morpheusadam/v2ray-config/raw/refs/heads/main/subs/bundles/vless.txt",
     "https://github.com/morpheusadam/v2ray-config/raw/refs/heads/main/subs/bundles/trojan.txt",
@@ -71,236 +80,84 @@ SOURCES = [
   "https://github.com/barry-far/V2ray-Config/raw/refs/heads/main/Splitted-By-Protocol/vmess.txt",
 ]
 
-# ============================================================
-# 2. النطاقات الأساسية ديال X / Twitter
-#    المطابقة كتتم إما بالضبط (exact) أو كـ subdomain
-#    مثال: "x.com" كيقبل "x.com" و "api.x.com" و "mobile.x.com"
-#    ولكن ما كيقبلش "fakex.com" ولا "notx.com"
-# ============================================================
-X_BASE_DOMAINS = [
-    # --- X و Twitter ---
-    "x.com",
-    "twitter.com",
-    "twimg.com",       # CDN ديال الصور والوسائط
-    "t.co",            # الرابط القصير الرسمي
-    "pscp.tv",         # البث المباشر
-    "periscope.tv",
-    "grok.com",        # خدمة Grok
-    "x.ai",            # شركة xAI
-    "ads-twitter.com", # إعلانات
-
-    # --- نطاقات فرعية رئيسية ديال X (كـ exact للاحتياط) ---
-    "api.x.com",
-    "api-stream.x.com",
-    "mobile.x.com",
-    "business.x.com",
-    "developer.x.com",
-    "docs.x.com",
-    "blog.x.com",
-    "about.x.com",
-    "help.x.com",
-    "support.x.com",
-    "accounts.x.com",
-    "auth.x.com",
-    "login.x.com",
-    "signin.x.com",
-    "video.x.com",
-    "video-s.x.com",
-    "messages.x.com",
-    "dm.x.com",
-    "chat-ws.x.com",
-    "analytics.x.com",
-    "ads.x.com",
-    "pay.x.com",
-    "payments.x.com",
-    "money.x.com",
-    "grok.x.com",
-    "grok-api.x.com",
-    "api.grok.x.com",
-    "xchat.x.com",
-    "safety.x.com",
-    "security.x.com",
-    "caps.x.com",
-    "aa.x.com",
-    "jf.x.com",
-    "jf-t.x.com",
-    "ton.x.com",
-    "upload.x.com",
-    "vault.x.com",
-    "console.x.com",
-    "brand.x.com",
-    "cards.x.com",
-    "cards-beta.x.com",
-    "cards-dev.x.com",
-    "canary.x.com",
-    "amplify.x.com",
-    "birdwatch.x.com",
-    "m.x.com",
-
-    # --- نطاقات فرعية ديال twitter.com ---
-    "api.twitter.com",
-    "help.twitter.com",
-    "support.twitter.com",
-    "business.twitter.com",
-    "developer.twitter.com",
-    "dev.twitter.com",
-    "ads.twitter.com",
-    "analytics.twitter.com",
-    "mobile.twitter.com",
-    "platform.twitter.com",
-    "pay.twitter.com",
-    "payments.twitter.com",
-    "upload.twitter.com",
-    "ton.twitter.com",
-    "jf.twitter.com",
-    "jf-t.twitter.com",
-    "caps.twitter.com",
-    "safety.twitter.com",
-    "security.twitter.com",
-    "aa.twitter.com",
-    "m.twitter.com",
-    "apps.twitter.com",
-    "careers.twitter.com",
-    "marketing.twitter.com",
-    "search.twitter.com",
-    "t.twitter.com",
-    "about.twitter.com",
-
-    # --- نطاقات فرعية ديال twimg.com (CDN) ---
-    "pbs.twimg.com",
-    "video.twimg.com",
-    "abs.twimg.com",
-    "ton.twimg.com",
-    "p.twimg.com",
-    "r.twimg.com",
-    "g.twimg.com",
-    "a0.twimg.com",
-    "a1.twimg.com",
-    "a2.twimg.com",
-    "a3.twimg.com",
-    "abs-0.twimg.com",
-    "abs-ak.twimg.com",
-    "abs-ft.twimg.com",
-    "abs-o-ak.twimg.com",
-    "pbs-t-1.twimg.com",
-    "pbs-h2.twimg.com",
-    "video-t-2.twimg.com",
-    "video-s.twimg.com",
-    "cdn.syndication.twimg.com",
-    "si0.twimg.com",
-    "amp.twimg.com",
-    "widgets.twimg.com",
+ALLOWED_SNI_KEYWORDS = [
+    'x.com', 'twitter.com', 'twimg.com', 't.co', 'pscp.tv'
 ]
 
-# ============================================================
-# 3. نطاقات CloudFront المرتبطة بـ X (exact match فقط)
-# ============================================================
-X_CLOUDFRONT_DOMAINS = [
-    "d1muhwhmpsz4u8.cloudfront.net",  # chat-ws.x.com
-    "d2bchqfeno8n2m.cloudfront.net",  # analytics.x.com
-    "d2shtph9y6bxk.cloudfront.net",   # analytics.x.com
-    "dwo3ckksxlb0v.cloudfront.net",   # تحميل الوسائط (media)
-    "d2rdfnizen5apl.cloudfront.net",  # s.twimg.com (تاريخياً)
-    "d2jxbhlohyq6u5.cloudfront.net",  # مرتبط بـ AS13414 (Twitter)
-    "d2ag3jdu89hmr4.cloudfront.net",  # ملفات twitter.webp
-    "d2fawy817reudt.cloudfront.net",  # t.co analytics
-]
-
-# دمج الكل فـ ليستة واحدة
-ALLOWED_DOMAINS = X_BASE_DOMAINS + X_CLOUDFRONT_DOMAINS
-
-
-# ============================================================
-# 4. دالة التحقق من النطاق (exact أو subdomain)
-# ============================================================
-def is_allowed_sni(sni_value: str) -> bool:
-    """
-    كترجع True إلا كان الـ SNI مطابق بالضبط أو هو subdomain
-    ديال واحد من النطاقات المسموحة.
-    
-    مثال:
-      - "api.x.com"       ✅ (subdomain ديال x.com)
-      - "x.com"           ✅ (exact)
-      - "fakex.com"       ❌ (ماشي subdomain، حيت ما كيبداش بـ ".")
-      - "notx.com"        ❌
-      - "x.com.evil.com"  ❌
-    """
-    sni = sni_value.strip().lower().rstrip(".")
-    if not sni:
-        return False
-
-    for domain in ALLOWED_DOMAINS:
-        domain = domain.lower()
-        if sni == domain or sni.endswith("." + domain):
-            return True
-    return False
-
-
-# ============================================================
-# 5. جلب الروابط من المصادر
-# ============================================================
-def fetch_raw_links() -> str:
+def fetch_raw_links():
     raw_data = ""
     for url in SOURCES:
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
             with urllib.request.urlopen(req, timeout=15) as response:
-                raw_data += response.read().decode("utf-8", errors="ignore") + "\n"
+                content = response.read().decode('utf-8', errors='ignore')
+                # نتأكدو واش ماشي صفحة HTML ديال 404
+                if "<!DOCTYPE html>" in content or "<html>" in content:
+                    print(f"⚠️ تحذير: {url} رجع صفحة HTML (يمكن رابط خايب)")
+                    continue
+                raw_data += content + "\n"
                 print(f"✅ تم الجلب من: {url}")
         except Exception as e:
             print(f"❌ خطأ فـ الجلب من {url}: {e}")
     return raw_data
 
+def try_base64_decode(text):
+    try:
+        # فك تشفير Base64 يلا كان
+        decoded = base64.b64decode(text + '===').decode('utf-8', errors='ignore')
+        if 'vless://' in decoded or 'vmess://' in decoded:
+            return decoded
+    except:
+        pass
+    return text
 
-# ============================================================
-# 6. فلترة روابط VLESS Reality حسب SNI
-# ============================================================
-def filter_vless_reality(text: str) -> list:
-    vless_links = re.findall(r"(vless://[^\s]+)", text)
-    filtered_links = []
-    rejected_sni = set()
-
-    for link in vless_links:
-        # خاص يكون Reality
-        if "security=reality" not in link:
-            continue
-
-        # استخراج SNI
-        sni_match = re.search(r"[?&]sni=([^&]+)", link)
-        if not sni_match:
-            continue
-
-        sni_value = sni_match.group(1).lower()
-
-        if is_allowed_sni(sni_value):
-            filtered_links.append(link)
-        else:
-            rejected_sni.add(sni_value)
-
-    # إزالة التكرار
-    filtered_links = list(dict.fromkeys(filtered_links))
-
-    return filtered_links, rejected_sni
-
-
-# ============================================================
-# 7. التشغيل الرئيسي
-# ============================================================
 if __name__ == "__main__":
     print("🔄 جاري جمع الروابط...")
     raw_content = fetch_raw_links()
+    
+    print(f"📦 طول النص الإجمالي: {len(raw_content)} حرف")
+    if len(raw_content) == 0:
+        print("❌ النص خاوي! المصادر ماقراوش مزيان.")
+        exit()
 
-    print("🔍 جاري الفلترة: VLESS Reality + نطاقات X الموثوقة...")
-    reality_links, rejected_sni = filter_vless_reality(raw_content)
-
-    # حفظ النتائج
+    # نحاولو نفكو التشفير
+    decoded_content = try_base64_decode(raw_content)
+    
+    # 1. نستخرجو كل الروابط
+    all_links = re.findall(r'(?:vless|vmess|trojan|ss)://[^\s]+', decoded_content)
+    print(f"🔗 إجمالي الروابط (كل البروتوكولات): {len(all_links)}")
+    
+    # 2. نستخرجو غير VLESS
+    vless_links = [link for link in all_links if link.startswith('vless://')]
+    print(f"🟢 إجمالي روابط VLESS: {len(vless_links)}")
+    
+    # 3. نشوفو شحال فيهم Reality
+    reality_links = [link for link in vless_links if 'security=reality' in link.lower()]
+    print(f"🛡️ إجمالي روابط VLESS Reality: {len(reality_links)}")
+    
+    # 4. نحللو الـ SNIs ديال Reality
+    found_snis = []
+    accepted_links = []
+    
+    for link in reality_links:
+        # استخراج SNI بأكثر من طريقة
+        sni_match = re.search(r'[?&](?:sni|serverName|host)=([^&]+)', link, re.IGNORECASE)
+        if sni_match:
+            sni = sni_match.group(1).lower()
+            found_snis.append(sni)
+            
+            if any(keyword in sni for keyword in ALLOWED_SNI_KEYWORDS):
+                accepted_links.append(link)
+    
+    # 5. نطبعو أكثر 15 SNI مستعمل
+    print("\n📊 أكثر 15 SNI مستعمل في الروابط Reality:")
+    sni_counts = Counter(found_snis).most_common(15)
+    for sni, count in sni_counts:
+        print(f"   - {sni} (تكرر {count} مرة)")
+        
+    print(f"\n✅ عدد الروابط اللي فازو بالفلترة (فيها X/Twitter): {len(accepted_links)}")
+    
+    # حفظ النتيجة
     with open("reality_configs.txt", "w", encoding="utf-8") as f:
-        for link in reality_links:
+        for link in accepted_links:
             f.write(link + "\n")
-
-    # طباعة ملخص
-    print(f"\n✅ تم حفظ {len(reality_links)} كونفيغ Reality متوافق.")
-    if rejected_sni:
-        print(f"⚠️  تم رفض {len(rejected_sni)} SNI غير مطابق (أمثلة):")
-        for sni in list(rejected_sni)[:10]:
-            print(f"   - {sni}")
