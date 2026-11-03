@@ -70,6 +70,7 @@ ALLOWED_DOMAINS = [
     # --- نطاقات CDN الصريحة عبر Cloudflare ---
     "x.com.cdn.cloudflare.net",
     "www.cloudflare.com",
+    "www.cloudflare.net",
     "api.twitter.com.cdn.cloudflare.net",
     "dynamic.x.com.cdn.cloudflare.net",
     "help.twitter.com.cdn.cloudflare.net",
