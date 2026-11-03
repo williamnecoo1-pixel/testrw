@@ -2,6 +2,8 @@ import re
 import urllib.request
 import base64
 import json
+import socket
+from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 # ============================================================
 # 1. قائمة المصادر (RAW URLs)
@@ -61,14 +63,14 @@ SOURCES = [
     "https://github.com/iboxz/free-v2ray-collector/raw/refs/heads/main/main/mix"
 ]
 
-# الكلمات المفتاحية ديال X
+# الكلمات المفتاحية ديال X (اختياري، إلا بغيتي تحيدو، غير مسحو من الشروط تحت)
 X_KEYWORDS = [
     "x.com", "twitter.com", "twimg.com", "t.co", "x.ai", 
     "grok.com", "pscp.tv", "ads-twitter.com"
 ]
 
-# الـ IP الجديد اللي بغينا نحطو (Cloudflare)
-NEW_IP = "104.18.37.127"
+# IP احتياطي يلا ما قدرش يحل الدومين (Cloudflare)
+FALLBACK_IP = "104.18.37.127"
 
 # ============================================================
 # 2. جلب الروابط
@@ -86,20 +88,32 @@ def fetch_raw_links() -> str:
     return raw_data
 
 # ============================================================
-# 3. الفلترة والتعديل
+# 3. دالة لحل الدومين وجلب الـ IP
 # ============================================================
-def filter_and_modify_xhttp(text: str):
-    # 1. استخراج جميع الروابط (VLESS, Trojan, VMess)
+def resolve_domain(domain):
+    try:
+        # كنجيبو غير الـ IPv4 باش نتفاداو مشاكل IPv6 فبعض التطبيقات
+        ip = socket.gethostbyname(domain)
+        return ip
+    except Exception:
+        return FALLBACK_IP
+
+# ============================================================
+# 4. الفلترة والتعديل
+# ============================================================
+def process_configs(text: str):
+    # استخراج الروابط
     all_configs = re.findall(r'(?:vless|trojan|vmess)://[^\s]+', text)
     
-    filtered_links = []
+    original_links = []
+    modified_links = []
     
     for link in all_configs:
         link_lower = link.lower()
         
-        # شرط الكلمات المفتاحية ديال X
-        if not any(keyword in link_lower for keyword in X_KEYWORDS):
-            continue
+        # شرط الكلمات المفتاحية (إلا بغيتي تحيد هاد الشرط، غير مسح هاد السطرين)
+        # if not any(keyword in link_lower for keyword in X_KEYWORDS):
+        #     continue
             
         # === معالجة VLESS و Trojan ===
         if link_lower.startswith('vless://') or link_lower.startswith('trojan://'):
@@ -108,60 +122,112 @@ def filter_and_modify_xhttp(text: str):
             is_443 = ':443?' in link_lower or ':443#' in link_lower or ':443/' in link_lower or link_lower.endswith(':443')
             
             if is_xhttp and is_tls and is_443:
-                # تبديل الـ IP
-                new_link = re.sub(r'(?<=@)[^:/]+(?=:\d+)', NEW_IP, link)
-                filtered_links.append(new_link)
+                original_links.append(link)
                 
-        # === معالجة VMess (مشفر بـ Base64) ===
+                try:
+                    # تفكيك الرابط
+                    parsed = urlparse(link)
+                    query_params = parse_qs(parsed.query)
+                    
+                    # جلب الـ SNI
+                    sni = query_params.get('sni', [None])[0]
+                    
+                    if sni:
+                        # 1. جلب الـ IP ديال الـ SNI
+                        new_ip = resolve_domain(sni)
+                        
+                        # 2. تعديل الـ Host باش يولي هو نفسه الـ SNI
+                        query_params['host'] = [sni]
+                        
+                        # 3. إعادة بناء الـ Query
+                        new_query = urlencode(query_params, doseq=True)
+                        
+                        # 4. تعديل الـ netloc (الـ IP والـ Port)
+                        # الـ netloc كيكون بحال: [2401:c080...]:443 أو 1.2.3.4:443
+                        port = parsed.port if parsed.port else 443
+                        new_netloc = f"{new_ip}:{port}"
+                        
+                        # 5. بناء الرابط الجديد
+                        modified_link = urlunparse((
+                            parsed.scheme,
+                            new_netloc,
+                            parsed.path,
+                            parsed.params,
+                            new_query,
+                            parsed.fragment
+                        ))
+                        
+                        modified_links.append(modified_link)
+                except Exception as e:
+                    print(f"⚠️ فشل تعديل الرابط: {link[:40]}... ({e})")
+                
+        # === معالجة VMess ===
         elif link_lower.startswith('vmess://'):
             try:
-                # 1. فك التشفير
                 b64_data = link[8:]
-                # إضافة padding يلا كان ناقص
                 b64_data += '=' * (-len(b64_data) % 4)
                 decoded_json = base64.b64decode(b64_data).decode('utf-8')
                 config = json.loads(decoded_json)
                 
-                # 2. التحقق من الشروط داخل JSON
                 net = config.get('net', '').lower()
                 tls = config.get('tls', '').lower()
                 port = str(config.get('port', ''))
                 
                 if net == 'xhttp' and tls == 'tls' and port == '443':
-                    # 3. تبديل الـ IP
-                    config['add'] = NEW_IP
+                    original_links.append(link)
                     
-                    # 4. إعادة التشفير لـ Base64
-                    new_json_str = json.dumps(config, ensure_ascii=False)
-                    new_b64 = base64.b64encode(new_json_str.encode('utf-8')).decode('utf-8')
-                    filtered_links.append(f"vmess://{new_b64}")
-                    
-            except Exception as e:
-                # تخطي الروابط الخاطئة فـ VMess
+                    sni = config.get('sni', '') or config.get('host', '')
+                    if sni:
+                        new_ip = resolve_domain(sni)
+                        
+                        # تعديل البيانات
+                        config['add'] = new_ip
+                        config['host'] = sni
+                        
+                        new_json_str = json.dumps(config, ensure_ascii=False)
+                        new_b64 = base64.b64encode(new_json_str.encode('utf-8')).decode('utf-8')
+                        modified_links.append(f"vmess://{new_b64}")
+                        
+            except Exception:
                 pass
 
     # إزالة التكرار
-    return list(dict.fromkeys(filtered_links))
+    return list(dict.fromkeys(original_links)), list(dict.fromkeys(modified_links))
 
 # ============================================================
-# 4. التشغيل الرئيسي
+# 5. التشغيل الرئيسي
 # ============================================================
 if __name__ == "__main__":
     print("🔄 جاري جمع الروابط من المصادر...")
     raw_content = fetch_raw_links()
 
-    print(f"\n🔍 جاري الفلترة (VLESS/Trojan/VMess + XHTTP + TLS + 443) وتبديل الـ IP بـ {NEW_IP}...")
-    x_links = filter_and_modify_xhttp(raw_content)
+    print(f"\n🔍 جاري الفلترة والتعديل الذكي (تطابق SNI مع Host وحل الـ IP)...")
+    originals, modifieds = process_configs(raw_content)
 
-    # حفظ النتائج فـ الملف الصحيح
+    # حفظ النتائج فـ الملف
     with open("reality_configs.txt", "w", encoding="utf-8") as f:
-        for link in x_links:
+        # القسم الأول: الروابط الأصلية
+        f.write("# ==========================================\n")
+        f.write("# 1. الروابط الأصلية (بدون تعديل)\n")
+        f.write("# ==========================================\n\n")
+        for link in originals:
+            f.write(link + "\n")
+            
+        f.write("\n\n")
+        
+        # القسم الثاني: الروابط المعدلة
+        f.write("# ==========================================\n")
+        f.write("# 2. الروابط المعدلة (IP جديد + Host مطابق لـ SNI)\n")
+        f.write("# ==========================================\n\n")
+        for link in modifieds:
             f.write(link + "\n")
 
-    print(f"\n✅ تم حفظ {len(x_links)} كونفيغ مطابق فـ الملف: reality_configs.txt")
+    print(f"\n✅ تم العثور على {len(originals)} كونفيغ أصلي.")
+    print(f"✅ تم إنشاء {len(modifieds)} كونفيغ معدل.")
+    print(f"📁 تم الحفظ فـ الملف: reality_configs.txt")
     
-    # طباعة أول 10 ديال الروابط باش تشوف بعينك النتيجة
-    if x_links:
-        print("\n🔎 تأكيد: عينة من الروابط اللي تحفظو بعد التعديل:")
-        for link in x_links[:10]:
-            print(f"   - {link[:100]}...")
+    # طباعة عينة
+    if modifieds:
+        print("\n🔎 عينة من الروابط المعدلة:")
+        for link in modifieds[:3]:
+            print(f"   - {link[:120]}...")
