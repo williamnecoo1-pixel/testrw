@@ -2,12 +2,16 @@ name: Filter VLESS Configs
 
 on:
   schedule:
-    - cron: '0 */6 * * *' # كيخدم كل 6 سوايع
-  workflow_dispatch: # باش تقدر تشغلو يدوياً
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    # 👇 هاد السطر هو لي غادي يحل المشكل 👇
+    permissions:
+      contents: write
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -18,7 +22,7 @@ jobs:
           python-version: '3.10'
           
       - name: Run script
-        run: python main.py # بدل main.py بالسمية ديال الملف ديالك
+        run: python main.py
         
       - name: Commit and push changes
         run: |
