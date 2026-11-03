@@ -6,7 +6,7 @@ import concurrent.futures
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 # ============================================================
-# 1. قائمة المصادر (RAW URLs)
+# 1. قائمة المصادر
 # ============================================================
 SOURCES = [
     "https://github.com/morpheusadam/v2ray-config/raw/refs/heads/main/subs/bundles/vmess.txt",
@@ -63,26 +63,23 @@ SOURCES = [
     "https://github.com/iboxz/free-v2ray-collector/raw/refs/heads/main/main/mix"
 ]
 
-# الـ IP الثابت اللي بغينا نحطو
 TARGET_IP = "104.18.37.127"
 
 # ============================================================
-# 2. دالة جلب رابط واحد (مع Timeout)
+# 2. جلب الروابط
 # ============================================================
 def fetch_single_url(url):
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
         with urllib.request.urlopen(req, timeout=10) as response:
             return response.read().decode("utf-8", errors="ignore")
-    except Exception as e:
-        print(f"❌ خطأ فـ الجلب من {url[:40]}...: {e}")
+    except Exception:
         return ""
 
 # ============================================================
-# 3. التحقق من نوع النقل (Transport)
+# 3. التحقق من نوع النقل
 # ============================================================
 def is_valid_network(net_type):
-    # كنقبلو xhttp, grpc, tcp, raw، وإلا ما كانش مكتوب شي حاجة (الافتراضي tcp)
     if not net_type: return True 
     net_type = net_type.lower()
     return net_type in ['xhttp', 'grpc', 'tcp', 'raw']
@@ -91,9 +88,7 @@ def is_valid_network(net_type):
 # 4. الفلترة والتعديل
 # ============================================================
 def process_configs(text: str):
-    # استخراج جميع الروابط
     all_configs = re.findall(r'(?:vless|trojan|vmess)://[^\s]+', text)
-    original_links = []
     modified_links = []
     
     count = 0
@@ -112,37 +107,25 @@ def process_configs(text: str):
                 
                 # 1. التحقق من TLS
                 security = query_params.get('security', [''])[0].lower()
-                if security != 'tls': 
-                    continue
+                if security != 'tls': continue
                 
                 # 2. التحقق من البورت 443
-                if parsed.port != 443: 
-                    continue
+                if parsed.port != 443: continue
                 
-                # 3. التحقق من نوع النقل (Type/Net)
+                # 3. التحقق من نوع النقل (XHTTP, gRPC, TCP/RAW)
                 net_type = query_params.get('type', query_params.get('net', ['']))[0]
-                if not is_valid_network(net_type):
-                    continue
+                if not is_valid_network(net_type): continue
                 
                 # --- وصلنا لهنا، يعني الكونفيغ مطابق ---
-                original_links.append(link)
-                
-                # تعديل الـ IP والـ Host
-                sni = query_params.get('sni', [None])[0]
-                if sni:
-                    query_params['host'] = [sni] # باش ما يطيحش مع كلاودفلير
-                    new_query = urlencode(query_params, doseq=True)
-                else:
-                    new_query = parsed.query
-                
+                # كنديرو غير تبديل الـ IP (ماشي الـ Host ولا SNI)
                 new_netloc = f"{TARGET_IP}:443"
                 
                 modified_link = urlunparse((
                     parsed.scheme,
-                    new_netloc,
+                    new_netloc,       # الـ IP الجديد
                     parsed.path,
                     parsed.params,
-                    new_query,
+                    parsed.query,     # كنخليو الـ Query كيفما هو
                     parsed.fragment
                 ))
                 modified_links.append(modified_link)
@@ -160,27 +143,19 @@ def process_configs(text: str):
                 
                 # 1. التحقق من TLS
                 tls = config.get('tls', '').lower()
-                if tls != 'tls':
-                    continue
+                if tls != 'tls': continue
                 
                 # 2. التحقق من البورت 443
                 port = str(config.get('port', ''))
-                if port != '443':
-                    continue
+                if port != '443': continue
                 
                 # 3. التحقق من نوع النقل
                 net_type = config.get('net', '')
-                if not is_valid_network(net_type):
-                    continue
+                if not is_valid_network(net_type): continue
                 
                 # --- وصلنا لهنا، يعني الكونفيغ مطابق ---
-                original_links.append(link)
-                
-                # تعديل الـ IP والـ Host
+                # كنديرو غير تبديل الـ IP
                 config['add'] = TARGET_IP
-                sni = config.get('sni', '')
-                if sni:
-                    config['host'] = sni # باش ما يطيحش مع كلاودفلير
                 
                 new_json_str = json.dumps(config, ensure_ascii=False)
                 new_b64 = base64.b64encode(new_json_str.encode('utf-8')).decode('utf-8')
@@ -189,13 +164,13 @@ def process_configs(text: str):
             except Exception:
                 pass
 
-    return list(dict.fromkeys(original_links)), list(dict.fromkeys(modified_links))
+    return list(dict.fromkeys(modified_links))
 
 # ============================================================
 # 5. التشغيل الرئيسي
 # ============================================================
 if __name__ == "__main__":
-    print("🔄 جاري جمع الروابط من المصادر (بشكل متوازي)...")
+    print("🔄 جاري جمع الروابط من المصادر...")
     
     raw_data_list = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
@@ -208,24 +183,12 @@ if __name__ == "__main__":
     print(f"✅ تم جلب {len(raw_data_list)} مصدر بنجاح.")
 
     print(f"\n🔍 جاري الفلترة (XHTTP/gRPC/TCP + TLS + 443) وتغيير الـ IP لـ {TARGET_IP}...")
-    originals, modifieds = process_configs(raw_content)
+    modifieds = process_configs(raw_content)
 
     # حفظ النتائج
     with open("reality_configs.txt", "w", encoding="utf-8") as f:
-        f.write("# ==========================================\n")
-        f.write("# 1. الروابط الأصلية (بدون تعديل)\n")
-        f.write("# ==========================================\n\n")
-        for link in originals:
-            f.write(link + "\n")
-            
-        f.write("\n\n")
-        
-        f.write("# ==========================================\n")
-        f.write(f"# 2. الروابط المعدلة (IP: {TARGET_IP} + Host مطابق لـ SNI)\n")
-        f.write("# ==========================================\n\n")
         for link in modifieds:
             f.write(link + "\n")
 
-    print(f"\n✅ تم العثور على {len(originals)} كونفيغ أصلي.")
-    print(f"✅ تم إنشاء {len(modifieds)} كونفيغ معدل.")
+    print(f"\n✅ تم إنشاء {len(modifieds)} كونفيغ معدل.")
     print(f"📁 تم الحفظ فـ الملف: reality_configs.txt")
