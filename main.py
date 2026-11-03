@@ -2,7 +2,6 @@ import re
 import urllib.request
 import base64
 import json
-import socket
 import concurrent.futures
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
@@ -64,8 +63,8 @@ SOURCES = [
     "https://github.com/iboxz/free-v2ray-collector/raw/refs/heads/main/main/mix"
 ]
 
-FALLBACK_IP = "104.18.37.127"
-dns_cache = {}
+# الـ IP الثابت اللي بغينا نحطو
+TARGET_IP = "104.18.37.127"
 
 # ============================================================
 # 2. دالة جلب رابط واحد (مع Timeout)
@@ -80,68 +79,77 @@ def fetch_single_url(url):
         return ""
 
 # ============================================================
-# 3. دالة حل الدومين (مع Cache و Timeout)
+# 3. التحقق من نوع النقل (Transport)
 # ============================================================
-def resolve_domain(domain):
-    if domain in dns_cache:
-        return dns_cache[domain]
-    try:
-        # استخدام ThreadPoolExecutor لضمان ما يعلقش السكريبت
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(socket.gethostbyname, domain)
-            ip = future.result(timeout=3) # 3 ثواني كافي
-            dns_cache[domain] = ip
-            return ip
-    except Exception:
-        dns_cache[domain] = FALLBACK_IP
-        return FALLBACK_IP
+def is_valid_network(net_type):
+    # كنقبلو xhttp, grpc, tcp, raw، وإلا ما كانش مكتوب شي حاجة (الافتراضي tcp)
+    if not net_type: return True 
+    net_type = net_type.lower()
+    return net_type in ['xhttp', 'grpc', 'tcp', 'raw']
 
 # ============================================================
 # 4. الفلترة والتعديل
 # ============================================================
 def process_configs(text: str):
+    # استخراج جميع الروابط
     all_configs = re.findall(r'(?:vless|trojan|vmess)://[^\s]+', text)
     original_links = []
     modified_links = []
     
+    count = 0
     for link in all_configs:
         link_lower = link.lower()
+        count += 1
         
+        if count % 2000 == 0:
+            print(f"⏳ تم فحص {count} رابط...")
+
         # === معالجة VLESS و Trojan ===
         if link_lower.startswith('vless://') or link_lower.startswith('trojan://'):
-            is_xhttp = 'type=xhttp' in link_lower or 'net=xhttp' in link_lower
-            is_tls = 'security=tls' in link_lower
-            is_443 = ':443?' in link_lower or ':443#' in link_lower or ':443/' in link_lower or link_lower.endswith(':443')
-            
-            if is_xhttp and is_tls and is_443:
+            try:
+                parsed = urlparse(link)
+                query_params = parse_qs(parsed.query)
+                
+                # 1. التحقق من TLS
+                security = query_params.get('security', [''])[0].lower()
+                if security != 'tls': 
+                    continue
+                
+                # 2. التحقق من البورت 443
+                if parsed.port != 443: 
+                    continue
+                
+                # 3. التحقق من نوع النقل (Type/Net)
+                net_type = query_params.get('type', query_params.get('net', ['']))[0]
+                if not is_valid_network(net_type):
+                    continue
+                
+                # --- وصلنا لهنا، يعني الكونفيغ مطابق ---
                 original_links.append(link)
                 
-                try:
-                    parsed = urlparse(link)
-                    query_params = parse_qs(parsed.query)
-                    sni = query_params.get('sni', [None])[0]
-                    
-                    if sni:
-                        new_ip = resolve_domain(sni)
-                        query_params['host'] = [sni] # Host يولي هو SNI
-                        new_query = urlencode(query_params, doseq=True)
-                        
-                        port = parsed.port if parsed.port else 443
-                        # إلا كان IPv6 خاصنا نحطوه بين قوسين
-                        new_netloc = f"[{new_ip}]:{port}" if ":" in new_ip else f"{new_ip}:{port}"
-                        
-                        modified_link = urlunparse((
-                            parsed.scheme,
-                            new_netloc,
-                            parsed.path,
-                            parsed.params,
-                            new_query,
-                            parsed.fragment
-                        ))
-                        modified_links.append(modified_link)
-                except Exception:
-                    pass
+                # تعديل الـ IP والـ Host
+                sni = query_params.get('sni', [None])[0]
+                if sni:
+                    query_params['host'] = [sni] # باش ما يطيحش مع كلاودفلير
+                    new_query = urlencode(query_params, doseq=True)
+                else:
+                    new_query = parsed.query
                 
+                new_netloc = f"{TARGET_IP}:443"
+                
+                modified_link = urlunparse((
+                    parsed.scheme,
+                    new_netloc,
+                    parsed.path,
+                    parsed.params,
+                    new_query,
+                    parsed.fragment
+                ))
+                modified_links.append(modified_link)
+                
+            except Exception:
+                pass
+            
         # === معالجة VMess ===
         elif link_lower.startswith('vmess://'):
             try:
@@ -150,22 +158,34 @@ def process_configs(text: str):
                 decoded_json = base64.b64decode(b64_data).decode('utf-8')
                 config = json.loads(decoded_json)
                 
-                net = config.get('net', '').lower()
+                # 1. التحقق من TLS
                 tls = config.get('tls', '').lower()
-                port = str(config.get('port', ''))
+                if tls != 'tls':
+                    continue
                 
-                if net == 'xhttp' and tls == 'tls' and port == '443':
-                    original_links.append(link)
-                    sni = config.get('sni', '') or config.get('host', '')
-                    
-                    if sni:
-                        new_ip = resolve_domain(sni)
-                        config['add'] = new_ip
-                        config['host'] = sni
-                        
-                        new_json_str = json.dumps(config, ensure_ascii=False)
-                        new_b64 = base64.b64encode(new_json_str.encode('utf-8')).decode('utf-8')
-                        modified_links.append(f"vmess://{new_b64}")
+                # 2. التحقق من البورت 443
+                port = str(config.get('port', ''))
+                if port != '443':
+                    continue
+                
+                # 3. التحقق من نوع النقل
+                net_type = config.get('net', '')
+                if not is_valid_network(net_type):
+                    continue
+                
+                # --- وصلنا لهنا، يعني الكونفيغ مطابق ---
+                original_links.append(link)
+                
+                # تعديل الـ IP والـ Host
+                config['add'] = TARGET_IP
+                sni = config.get('sni', '')
+                if sni:
+                    config['host'] = sni # باش ما يطيحش مع كلاودفلير
+                
+                new_json_str = json.dumps(config, ensure_ascii=False)
+                new_b64 = base64.b64encode(new_json_str.encode('utf-8')).decode('utf-8')
+                modified_links.append(f"vmess://{new_b64}")
+                
             except Exception:
                 pass
 
@@ -177,9 +197,8 @@ def process_configs(text: str):
 if __name__ == "__main__":
     print("🔄 جاري جمع الروابط من المصادر (بشكل متوازي)...")
     
-    # جلب الملفات كاملة فنفس الوقت (Parallel)
     raw_data_list = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
         results = list(executor.map(fetch_single_url, SOURCES))
         for res in results:
             if res:
@@ -188,7 +207,7 @@ if __name__ == "__main__":
     raw_content = "\n".join(raw_data_list)
     print(f"✅ تم جلب {len(raw_data_list)} مصدر بنجاح.")
 
-    print(f"\n🔍 جاري الفلترة والتعديل الذكي (SNI Match + DNS Cache)...")
+    print(f"\n🔍 جاري الفلترة (XHTTP/gRPC/TCP + TLS + 443) وتغيير الـ IP لـ {TARGET_IP}...")
     originals, modifieds = process_configs(raw_content)
 
     # حفظ النتائج
@@ -202,7 +221,7 @@ if __name__ == "__main__":
         f.write("\n\n")
         
         f.write("# ==========================================\n")
-        f.write("# 2. الروابط المعدلة (IP جديد + Host مطابق لـ SNI)\n")
+        f.write(f"# 2. الروابط المعدلة (IP: {TARGET_IP} + Host مطابق لـ SNI)\n")
         f.write("# ==========================================\n\n")
         for link in modifieds:
             f.write(link + "\n")
