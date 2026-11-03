@@ -59,17 +59,17 @@ SOURCES = [
     "https://github.com/iboxz/free-v2ray-collector/raw/refs/heads/main/main/mix"
 ]
 
-# ============================================================
-# 2. الكلمات المفتاحية (أي حاجة فيها هاد السميات غادي تتحفظ)
-# ============================================================
-# هنا درنا غير السميات الأساسية اللي كتعطي إشارة لـ X/Twitter
+# الكلمات المفتاحية ديال X
 X_KEYWORDS = [
     "x.com", "twitter.com", "twimg.com", "t.co", "x.ai", 
     "grok.com", "pscp.tv", "ads-twitter.com"
 ]
 
+# الـ IP الجديد اللي بغينا نحطو (Cloudflare)
+NEW_IP = "104.18.37.127"
+
 # ============================================================
-# 3. جلب الروابط
+# 2. جلب الروابط
 # ============================================================
 def fetch_raw_links() -> str:
     raw_data = ""
@@ -78,51 +78,63 @@ def fetch_raw_links() -> str:
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
             with urllib.request.urlopen(req, timeout=15) as response:
                 raw_data += response.read().decode("utf-8", errors="ignore") + "\n"
-                print(f"✅ تم الجلب من: {url}")
+                print(f"✅ تم الجلب من: {url[:50]}...")
         except Exception as e:
-            print(f"❌ خطأ فـ الجلب من {url}: {e}")
+            print(f"❌ خطأ فـ الجلب من {url[:50]}: {e}")
     return raw_data
 
 # ============================================================
-# 4. الفلترة الجديدة (تقبل أي بروتوكول فيه علاقة بـ X)
+# 3. الفلترة والتعديل
 # ============================================================
-def filter_all_x_related(text: str):
-    # كنجيبو أي رابط ديال vless, vmess, trojan, ss, hysteria2, tuic...
-    # التعبير العادي هنا كيشمل بزاف ديال البروتوكولات
-    all_configs = re.findall(r'(?:vless|vmess|trojan|ss|hysteria2|hy2|tuic)://[^\s]+', text)
+def filter_and_modify_xhttp(text: str):
+    # 1. استخراج جميع الروابط
+    all_configs = re.findall(r'(?:vless|trojan)://[^\s]+', text)
     
     filtered_links = []
     
     for link in all_configs:
-        # كنقلبو على أي كلمة مفتاحية داخل الرابط كامل (سواء فـ SNI، Host، Address، ولا Remark)
         link_lower = link.lower()
         
-        if any(keyword in link_lower for keyword in X_KEYWORDS):
-            filtered_links.append(link)
+        # 2. شروط الفلترة: XHTTP + TLS + Port 443
+        is_xhttp = 'type=xhttp' in link_lower
+        is_tls = 'security=tls' in link_lower
+        # التاكد من أن البورت هو 443 (سواء كان مكتوب :443 أو port=443)
+        is_443 = ':443?' in link_lower or ':443#' in link_lower or ':443/' in link_lower or link_lower.endswith(':443')
+        
+        # 3. شرط الكلمات المفتاحية ديال X (يلا بغيتي تحيد هاد الشرط، غير امسح هاد السطر)
+        is_x_related = any(keyword in link_lower for keyword in X_KEYWORDS)
+        
+        if is_xhttp and is_tls and is_443 and is_x_related:
+            
+            # 4. تبديل الـ IP
+            # هاد الـ Regex كيقلب على أي حاجة جات مورا @ وقبل : (البورت) وكيبدلها بالـ IP الجديد
+            # مثال: @1.2.3.4:443 كتولي @104.18.37.127:443
+            new_link = re.sub(r'(?<=@)[^:/]+(?=:\d+)', NEW_IP, link)
+            
+            filtered_links.append(new_link)
 
     # إزالة التكرار
     return list(dict.fromkeys(filtered_links))
 
 # ============================================================
-# 5. التشغيل الرئيسي
+# 4. التشغيل الرئيسي
 # ============================================================
 if __name__ == "__main__":
     print("🔄 جاري جمع الروابط من المصادر...")
     raw_content = fetch_raw_links()
 
-    print("🔍 جاري الفلترة: كنجمعو أي كونفيغ فيه علاقة بـ X (بلا شرط Reality)...")
-    x_links = filter_all_x_related(raw_content)
+    print(f"\n🔍 جاري الفلترة: (XHTTP + TLS + 443) وتبديل الـ IP بـ {NEW_IP}...")
+    x_links = filter_and_modify_xhttp(raw_content)
 
     # حفظ النتائج
-    with open("reality_configs.txt", "w", encoding="utf-8") as f:
+    with open("xhttp_tls_443_x_configs.txt", "w", encoding="utf-8") as f:
         for link in x_links:
             f.write(link + "\n")
 
-    print(f"\n✅ تم حفظ {len(x_links)} كونفيغ كامل فيه علاقة بـ X.")
+    print(f"\n✅ تم حفظ {len(x_links)} كونفيغ مطابق فـ الملف: xhttp_tls_443_x_configs.txt")
     
     # طباعة أول 10 ديال الروابط باش تشوف بعينك النتيجة
     if x_links:
-        print("\n🔎 تأكيد: عينة من الروابط اللي تحفظو:")
+        print("\n🔎 تأكيد: عينة من الروابط اللي تحفظو بعد التعديل:")
         for link in x_links[:10]:
-            # كنقصو الرابط باش يبان مزيان فـ اللوغ
-            print(f"   - {link[:80]}...")
+            print(f"   - {link[:100]}...")
