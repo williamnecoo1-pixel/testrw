@@ -60,122 +60,16 @@ SOURCES = [
 ]
 
 # ============================================================
-# 2. القائمة العملاقة لنطاقات X / Cloudflare (أكثر من 120 نطاق)
+# 2. الكلمات المفتاحية (أي حاجة فيها هاد السميات غادي تتحفظ)
 # ============================================================
-ALLOWED_DOMAINS = [
-    # --- النطاقات الأساسية والجذور ---
-    "x.com", "twitter.com", "twimg.com", "t.co", "pscp.tv", "periscope.tv",
-    "ads-twitter.com", "grok.com", "x.ai",
-
-    # --- نطاقات CDN الصريحة عبر Cloudflare ---
-    "x.com.cdn.cloudflare.net",
-    "www.cloudflare.com",
-    "www.cloudflare.net",
-    "api.twitter.com.cdn.cloudflare.net",
-    "dynamic.x.com.cdn.cloudflare.net",
-    "help.twitter.com.cdn.cloudflare.net",
-    "pbs.twimg.com.cdn.cloudflare.net",
-    "video.twimg.com.cdn.cloudflare.net",
-    "abs.twimg.com.cdn.cloudflare.net",
-    "cdn.syndication.twimg.com.cdn.cloudflare.net",
-    "platform.twitter.com.cdn.cloudflare.net",
-    "t.co.cdn.cloudflare.net",
-
-    # --- نطاقات API والخدمات الأساسية (x.com) ---
-    "api.x.com", "api-stream.x.com", "api-staging.x.com", "api-t4.x.com",
-    "api-ak-dev.x.com", "graphql.x.com", "syapi.x.com", "niche-api.x.com",
-    "mobile.x.com", "m.x.com", "app.x.com", "apps.x.com", "lite.x.com",
-    "business.x.com", "developer.x.com", "developers.x.com", "docs.x.com",
-    "blog.x.com", "about.x.com", "help.x.com", "support.x.com",
-    "accounts.x.com", "auth.x.com", "login.x.com", "signin.x.com",
-    "auth-grokgs.x.com", "account-grokgs.x.com", "grok.x.com", "grok-api.x.com",
-    "chat-ws.x.com", "messages.x.com", "dms.x.com", "dm.x.com",
-    "video.x.com", "video-s.x.com", "media.x.com", "img.x.com", "fonts.x.com",
-    "analytics.x.com", "ads.x.com", "advertising.x.com", "ads-staging.x.com",
-    "pay.x.com", "payments.x.com", "money.x.com", "p.payments-prod.x.com",
-    "p.payments-staging.x.com", "money-support.x.com", "money-support-dev.x.com",
-    "money-support-staging.x.com", "realm-a.x.com", "realm-b.x.com",
-    "realm-cloud1.x.com", "realm-east1.x.com", "realm-west1.x.com",
-    "safety.x.com", "security.x.com", "trust.x.com", "caps.x.com",
-    "aa.x.com", "jf.x.com", "jf-t.x.com", "ton.x.com", "upload.x.com",
-    "upload-a.x.com", "upload-b.x.com", "vault.x.com", "console.x.com",
-    "brand.x.com", "brand-dev.x.com", "brand-staging.x.com", "cards.x.com",
-    "cards-beta.x.com", "cards-dev.x.com", "cards-staging.x.com",
-    "canary.x.com", "amplify.x.com", "birdwatch.x.com", "communitynotes.x.com",
-    "communitynotes-staging.x.com", "create.x.com", "create-dev.x.com",
-    "create-staging.x.com", "directresponse.x.com", "discover.x.com",
-    "elections.x.com", "elp.x.com", "email.x.com", "eng.x.com",
-    "ethicshelpline.x.com", "event.x.com", "gdpr-staging.x.com",
-    "grow.x.com", "growth.x.com", "handles.x.com", "hsm-staging.x.com",
-    "innovators.x.com", "legal-dev.x.com", "mail.x.com", "marketing.x.com",
-    "marketing-dev.x.com", "marketing-staging.x.com", "momentmaker.x.com",
-    "mx3.x.com", "mx4.x.com", "opensource.x.com", "partners.x.com",
-    "paymentaging.x.com", "paymenxrod.x.com", "people.x.com", "platform.x.com",
-    "port.x.com", "postmaster.x.com", "pr.x.com", "premium.x.com", "press.x.com",
-    "privacy-dev.x.com", "probe.x.com", "proofpoint.x.com", "publish.x.com",
-    "publisher.x.com", "redirect.x.com", "research.x.com", "salessupport.x.com",
-    "search.x.com", "shop.x.com", "status.x.com", "studio-dev.x.com",
-    "syndication.x.com", "td.x.com", "terafab.x.com", "transparency-dev.x.com",
-    "transparency-staging.x.com", "tweetdeck.x.com", "twemoji.x.com",
-    "verified.x.com", "verified-staging.x.com", "webhook.x.com", "wr.x.com",
-    "ww.x.com", "cdn.syndication.x.com", "click.send.x.com", "dev.x.com",
-    "developer-staging.x.com", "developers-mp-dev.x.com", "developers-mp.x.com",
-    "spring-chicken.x.com", "spring-chicken-aa.x.com", "spring-chicken-an.x.com",
-    "spring-chicken-at.x.com", "spring-chicken-au.x.com", "spruce-goose-ab.x.com",
-    "spruce-goose-ac.x.com", "spruce-goose-af.x.com", "spruce-goose-ah.x.com",
-
-    # --- نطاقات Twitter (twitter.com) ---
-    "api.twitter.com", "api2.twitter.com", "graphql.twitter.com",
-    "help.twitter.com", "support.twitter.com", "business.twitter.com",
-    "developer.twitter.com", "dev.twitter.com", "ads.twitter.com",
-    "analytics.twitter.com", "mobile.twitter.com", "platform.twitter.com",
-    "pay.twitter.com", "payments.twitter.com", "upload.twitter.com",
-    "ton.twitter.com", "jf.twitter.com", "jf-t.twitter.com", "caps.twitter.com",
-    "safety.twitter.com", "security.twitter.com", "aa.twitter.com",
-    "m.twitter.com", "apps.twitter.com", "careers.twitter.com",
-    "marketing.twitter.com", "search.twitter.com", "t.twitter.com",
-    "about.twitter.com", "blog.twitter.com", "events.twitter.com",
-    "jobs.twitter.com", "media.twitter.com", "static.twitter.com",
-    "www.twitter.com", "www2.twitter.com", "calendar.twitter.com",
-    "data.twitter.com", "design.twitter.com", "download.twitter.com",
-    "event.twitter.com", "live.twitter.com", "stream.twitter.com",
-    "video.twitter.com", "mail.twitter.com", "mx.twitter.com", "mx1.twitter.com",
-    "mx2.twitter.com", "mx3.twitter.com", "dashboard.twitter.com",
-
-    # --- نطاقات Twimg (CDN الصور والوسائط) ---
-    "pbs.twimg.com", "video.twimg.com", "abs.twimg.com", "ton.twimg.com",
-    "p.twimg.com", "r.twimg.com", "g.twimg.com", "a0.twimg.com",
-    "a1.twimg.com", "a2.twimg.com", "a3.twimg.com", "abs-0.twimg.com",
-    "abs-ak.twimg.com", "abs-ft.twimg.com", "abs-o-ak.twimg.com",
-    "pbs-t-1.twimg.com", "pbs-h2.twimg.com", "video-t-2.twimg.com",
-    "video-s.twimg.com", "cdn.syndication.twimg.com", "si0.twimg.com",
-    "amp.twimg.com", "widgets.twimg.com", "abs-t-1.twimg.com",
-    "abs-zero.twimg.com", "dnt-o.twimg.com", "fastly-private-purge.twimg.com",
-    "ftl.twimg.com", "video-zero.twimg.com",
-
-    # --- نطاقات CloudFront (مرتبطة بـ X كما اتفقنا سابقاً) ---
-    "d1muhwhmpsz4u8.cloudfront.net", "d2bchqfeno8n2m.cloudfront.net",
-    "d2shtph9y6bxk.cloudfront.net", "dwo3ckksxlb0v.cloudfront.net",
-    "d2rdfnizen5apl.cloudfront.net", "d2jxbhlohyq6u5.cloudfront.net",
-    "d2ag3jdu89hmr4.cloudfront.net", "d2fawy817reudt.cloudfront.net",
+# هنا درنا غير السميات الأساسية اللي كتعطي إشارة لـ X/Twitter
+X_KEYWORDS = [
+    "x.com", "twitter.com", "twimg.com", "t.co", "x.ai", 
+    "grok.com", "pscp.tv", "ads-twitter.com"
 ]
 
 # ============================================================
-# 3. دالة التحقق (Exact match أو Subdomain)
-# ============================================================
-def is_allowed_sni(sni_value: str) -> bool:
-    sni = sni_value.strip().lower().rstrip(".")
-    if not sni:
-        return False
-
-    for domain in ALLOWED_DOMAINS:
-        domain = domain.lower()
-        if sni == domain or sni.endswith("." + domain):
-            return True
-    return False
-
-# ============================================================
-# 4. جلب الروابط
+# 3. جلب الروابط
 # ============================================================
 def fetch_raw_links() -> str:
     raw_data = ""
@@ -190,47 +84,45 @@ def fetch_raw_links() -> str:
     return raw_data
 
 # ============================================================
-# 5. الفلترة
+# 4. الفلترة الجديدة (تقبل أي بروتوكول فيه علاقة بـ X)
 # ============================================================
-def filter_vless_reality(text: str):
-    vless_links = re.findall(r"(vless://[^\s]+)", text)
+def filter_all_x_related(text: str):
+    # كنجيبو أي رابط ديال vless, vmess, trojan, ss, hysteria2, tuic...
+    # التعبير العادي هنا كيشمل بزاف ديال البروتوكولات
+    all_configs = re.findall(r'(?:vless|vmess|trojan|ss|hysteria2|hy2|tuic)://[^\s]+', text)
+    
     filtered_links = []
     
-    for link in vless_links:
-        if "security=reality" not in link:
-            continue
-
-        sni_match = re.search(r"[?&]sni=([^&]+)", link)
-        if not sni_match:
-            continue
-
-        sni_value = sni_match.group(1).lower()
-
-        if is_allowed_sni(sni_value):
+    for link in all_configs:
+        # كنقلبو على أي كلمة مفتاحية داخل الرابط كامل (سواء فـ SNI، Host، Address، ولا Remark)
+        link_lower = link.lower()
+        
+        if any(keyword in link_lower for keyword in X_KEYWORDS):
             filtered_links.append(link)
 
+    # إزالة التكرار
     return list(dict.fromkeys(filtered_links))
 
 # ============================================================
-# 6. التشغيل الرئيسي
+# 5. التشغيل الرئيسي
 # ============================================================
 if __name__ == "__main__":
     print("🔄 جاري جمع الروابط من المصادر...")
     raw_content = fetch_raw_links()
 
-    print("🔍 جاري الفلترة: VLESS Reality + نطاقات X و Cloudflare فقط...")
-    reality_links = filter_vless_reality(raw_content)
+    print("🔍 جاري الفلترة: كنجمعو أي كونفيغ فيه علاقة بـ X (بلا شرط Reality)...")
+    x_links = filter_all_x_related(raw_content)
 
-    # حفظ النتائج فـ الملف
+    # حفظ النتائج
     with open("reality_configs.txt", "w", encoding="utf-8") as f:
-        for link in reality_links:
+        for link in x_links:
             f.write(link + "\n")
 
-    print(f"\n✅ تم حفظ {len(reality_links)} كونفيغ Reality متوافق مع X و Cloudflare.")
+    print(f"\n✅ تم حفظ {len(x_links)} كونفيغ كامل فيه علاقة بـ X.")
     
-    # طباعة أول 5 ديال SNI باش نتأكدو
-    if reality_links:
-        print("\n🔎 تأكيد: عينة من الـ SNI اللي تحفظو:")
-        for link in reality_links[:5]:
-            sni = re.search(r"[?&]sni=([^&]+)", link).group(1)
-            print(f"   - {sni}")
+    # طباعة أول 10 ديال الروابط باش تشوف بعينك النتيجة
+    if x_links:
+        print("\n🔎 تأكيد: عينة من الروابط اللي تحفظو:")
+        for link in x_links[:10]:
+            # كنقصو الرابط باش يبان مزيان فـ اللوغ
+            print(f"   - {link[:80]}...")
