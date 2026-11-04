@@ -1,357 +1,1126 @@
+import urllib.request
 import base64
-import csv
 import json
-import os
-import socket
-import subprocess
-import tempfile
-import threading
-import time
+import re
 import urllib.parse
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from pathlib import Path
 
-import requests
+# ================== الإعدادات ==================
+SOURCES = [
 
-SOURCE_URL = "https://github.com/williamnecoo1-pixel/testrw/raw/refs/heads/main/reality_configs.txt"
-XRAY_BIN = os.environ.get("XRAY_BIN", "./xray/xray")
-WORKERS = int(os.environ.get("WORKERS", "25"))
-BASE_SOCKS_PORT = int(os.environ.get("BASE_SOCKS_PORT", "20000"))
+    "https://translate.yandex.ru/translate?url=https://bitbucket.org/igareck/vpn-configs-for-russia/raw/main/Export/v2rayN_PC/BLACK_VLESS_RUS_mobile_v2rayN.txt&lang=de-de",
+"https://raw.githubusercontent.com/drmikecrypto/PulseConfigs/HEAD/secure/configs.txt",
+"https://raw.githubusercontent.com/sakha1370/OpenRay/main/output_iran/iran_top100.txt",
+"https://vpnkeys.me/api/v1/keys",
+"https://raw.githubusercontent.com/10ium/ScrapeAndCategorize/refs/heads/main/output_configs/France.txt",
+"https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/sub/vmess.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/tcp.txt",
+"https://raw.githubusercontent.com/ninjastrikers/Nexus-nodes/main/configs/vmess.txt",
+"https://raw.githubusercontent.com/alirzza9/ConfigsHUB-VLESS/HEAD/sub/vless-de.txt",
+"https://raw.githubusercontent.com/alirzza9/ConfigsHUB-VLESS/HEAD/sub/vless-de-plain.txt",
+"https://bitbucket.org/igareck/vpn-configs-for-russia/raw/main/Export/v2rayN_PC/WHITE-CIDR-RU-all-v2rayN.txt",
+"https://raw.githubusercontent.com/barry-far/V2ray-config/main/Splitted-By-Protocol/trojan.txt",
+"https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/detailed/vmess/80.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/countries/FR.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/countries/IM.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/countries/IM.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/batches/v2ray/batch_005.txt",
+"https://raw.githubusercontent.com/drmikecrypto/PulseConfigs/HEAD/secure/configs_base64.txt",
+"https://molido-sub.hidooch980.workers.dev/sub/1",
+"https://raw.githubusercontent.com/SoliSpirit/SolVPN/main/Protocols/vless.txt",
+"https://raw.githubusercontent.com/Hidashimora/free-vpn-anti-rkn/main/configs/29.txt",
+"https://raw.githubusercontent.com/Idolvpn/Automate-V2ray-Config-Collector/main/configs/lite_mix_sub.txt",
+"https://raw.githubusercontent.com/Idolvpn/Automate-V2ray-Config-Collector/main/configs/mix_sub.txt",
+"https://raw.githubusercontent.com/Idolvpn/Automate-V2ray-Config-Collector/main/configs/mix.txt",
+"https://raw.githubusercontent.com/hidooch980/molidovpn-android/main/remote/shard-nodes.txt",
+"https://raw.githubusercontent.com/6b3478/telegram-configs-collector2/main/countries/cy/mixed",
+"https://gitlab.com/igareck/vpn-configs-for-russia/-/raw/main/WHITE-CIDR-RU-all.txt",
+"https://gitea.com/igareck/vpn-configs-for-russia/raw/branch/main/Export/Base64/PROXIES_ONLY/WHITE-CIDR-RU-all-base64.txt",
+"https://raw.githubusercontent.com/barry-far/V2ray-Config/main/Base64/Sub4_base64.txt",
+"https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/refs/heads/main/WHITE-CIDR-RU-all.txt",
+"https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/Export/v2rayN_PC/WHITE-CIDR-RU-all-v2rayN.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/countries/IR.txt",
+"https://raw.githubusercontent.com/pog7x/vpn-configs/refs/heads/master/githubmirror/1.txt",
+"https://raw.githubusercontent.com/liketolivefree/kobabi/main/sub_all.txt",
+"https://raw.githubusercontent.com/pie-with-jam/PulseProxy/main/source/config/storage.json",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/countries/ch.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/10ium-V2Hub3-merged",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/countries/ee.txt",
+"https://raw.githubusercontent.com/Danialsamadi/v2go/refs/heads/main/AllConfigsSub.txt",
+"https://raw.githubusercontent.com/6b3478/telegram-configs-collector2/main/countries/nl/mixed",
+"https://raw.githubusercontent.com/mohammadaz2/v2rayConfigsForYou/main/sub/vless.txt",
+"https://raw.githack.com/igareck/vpn-configs-for-russia/main/BLACK_VLESS_RUS_mobile.txt",
+"https://raw.githubusercontent.com/aviamastersgh/vpn-free-russia/main/ru_configs.txt",
+"https://raw.githubusercontent.com/shabane/kamaji/master/hub/self/tested/trojan.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/countries/jp.txt",
+"https://raw.githubusercontent.com/ShatakVPN/ConfigForge-V2Ray/main/configs/kz/all.txt",
+"https://raw.githubusercontent.com/Hidashimora/free-vpn-anti-rkn/main/configs/28.1.txt",
+"https://raw.githubusercontent.com/rtwo2/FastNodes/main/sub/countries/GB.txt",
+"https://raw.githubusercontent.com/Mokafela/Config-Finder/master/split/sub-NL.txt",
+"https://raw.githubusercontent.com/asgharkapk/Sub-Config-Extractor/refs/heads/main/output_configs/mixed/10ium/base64-encoder/10ium_trojan_iran.txt.yaml",
+"https://raw.githubusercontent.com/whoahaow/rjsxrd/main/githubmirror/bypass/bypass-3.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/robin.nscl.ir.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/10ium-telegram-configs-collector-shadowsocks",
+"https://raw.githubusercontent.com/free18/v2ray/refs/heads/main/v.txt",
+"https://raw.githubusercontent.com/yaney01/Yaney01/main/temporary",
+"https://raw.githubusercontent.com/lorenzazy7kenyon/free-vpn-subscriptions/main/output/by-country/v2ray-base64-GB.txt",
+"https://raw.githubusercontent.com/Hidashimora/free-vpn-anti-rkn/main/configs/18.1.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/batches/v2ray/batch_004.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/countries/tr.txt",
+"https://raw.githubusercontent.com/ShatakVPN/ConfigForge-V2Ray/main/configs/de/all.txt",
+"https://raw.githubusercontent.com/10ium/ScrapeAndCategorize/refs/heads/main/output_configs/Samoa.txt",
+"https://raw.githubusercontent.com/Freedom-Guard-Builder/Freedom-Finder/HEAD/out/configs/all.txt",
+"https://raw.githubusercontent.com/Farid-Karimi/Config-Collector/refs/heads/main/mixed_iran.txt",
+"https://raw.githubusercontent.com/Leon406/SubCrawler/refs/heads/main/sub/share/a11",
+"https://raw.githubusercontent.com/sakha1370/OpenRay/main/output/country/GB.txt",
+"https://raw.githubusercontent.com/amirkma/proxykma/refs/heads/main/mix.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/countries/JP.txt",
+"https://raw.githubusercontent.com/sakha1370/OpenRay/main/output/country/DE.txt",
+"https://raw.githubusercontent.com/EEvanescence/4Diana/main/By-protocol/ss.txt",
+"https://raw.githubusercontent.com/Au1rxx/free-vpn-subscriptions/main/output/all-verified/v2ray-base64-0005.txt",
+"https://raw.githubusercontent.com/Mai-kun/vless-sub-hub/main/docs/sub/vpn_netherlands.txt",
+"https://raw.githubusercontent.com/Mai-kun/vless-sub-hub/main/docs/sub/vpn_netherlands_raw.txt",
+"https://raw.githubusercontent.com/coldwater-10/V2ray-Config/main/Sub7.txt",
+"https://raw.githubusercontent.com/Hidashimora/free-vpn-anti-rkn/main/configs/13.1.txt",
+"https://raw.githubusercontent.com/F0rc3Run/F0rc3Run/refs/heads/main/Best-Results/proxies.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/10ium-telegram-configs-collector-grpc",
+"https://raw.githubusercontent.com/barry-far/V2ray-Config/main/Sub14.txt",
+"https://raw.githubusercontent.com/6b3478/telegram-configs-collector2/main/channels/networks/ws",
+"https://raw.githubusercontent.com/grisha-seleznev/free-vless-keys-russia/main/keys.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/shadowmere.xyz",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/countries/ir.txt",
+"https://raw.githubusercontent.com/6b3478/telegram-configs-collector2/main/networks/ws",
+"https://raw.githubusercontent.com/asgharkapk/Sub-Config-Extractor/refs/heads/main/output_configs/mixed/ermaozi.yaml",
+"https://raw.githubusercontent.com/F0rc3Run/F0rc3Run/refs/heads/main/Best-Results/sub.txt",
+"https://raw.githubusercontent.com/6b3478/telegram-configs-collector2/main/splitted/subscribe",
+"https://raw.githubusercontent.com/6b3478/telegram-configs-collector2/main/subscribe/layers/ipv4",
+"https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/refs/heads/main/Export/v2rayN_PC/WHITE-CIDR-RU-all-v2rayN.txt",
+"https://raw.githubusercontent.com/Argh94/V2RayAutoConfig/refs/heads/main/configs/ShadowSocks.txt",
+"https://raw.githubusercontent.com/mvladbrox-hub/vpn-super-v2rayng/main/subscription.txt",
+"https://raw.githubusercontent.com/Mokafela/Co-Killer/master/split/sub-DE.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/batches/v2ray/batch_008.txt",
+"https://raw.githubusercontent.com/Mokafela/Config-Finder/master/split/sub-DE.txt",
+"https://raw.githubusercontent.com/drmikecrypto/PulseConfigs/HEAD/protocols/trojan_base64.txt",
+"https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/detailed/trojan/80.txt",
+"https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/Export/Base64/PROXIES_ONLY/WHITE-CIDR-RU-all-base64.txt",
+"https://vless.svinakraft.workers.dev/podpiska.txt",
+"https://raw.githubusercontent.com/wuqb2i4f/xray-config-toolkit/main/output/base64/mix-uri",
+"https://raw.githubusercontent.com/Mai-kun/vless-sub-hub/main/docs/sub/other_other.txt",
+"https://raw.githubusercontent.com/Mai-kun/vless-sub-hub/main/docs/sub/other_other_raw.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/countries/CZ.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/countries/IT.txt",
+"https://raw.githubusercontent.com/heliataromi/ConfigHub/subscription/vless_base64.txt",
+"https://raw.githubusercontent.com/PlanAslii/vira-v2ray-configs/main/countries/DE.txt",
+"https://dfantomasd.github.io/MyVPN-subscription/public/happ.txt",
+"https://dfantomasd.github.io/MyVPN-subscription/public/karing.txt",
+"https://raw.githubusercontent.com/dfantomasd/MyVPN-subscription/main/public/happ.txt",
+"https://raw.githubusercontent.com/dfantomasd/MyVPN-subscription/main/public/karing.txt",
+"https://raw.githubusercontent.com/LeilaoMi/AutoMergePublicNodes-Optimized/data/output/all.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/countries/BG.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/countries/BG.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/countries/IT.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/10ium-HiN-VPN-trojan",
+"https://raw.githubusercontent.com/asgharkapk/Sub-Config-Extractor/refs/heads/main/output_configs/mixed/10ium/HiN-VPN/subscription/base64/trojan.yaml",
+"https://raw.githubusercontent.com/F0rc3Run/F0rc3Run/refs/heads/main/splitted-by-protocol/shadowsocks.txt",
+"https://raw.githubusercontent.com/shabane/kamaji/master/hub/self/tested/best.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/10ium-VpnClashFaCollector-mixed.txt",
+"https://raw.githubusercontent.com/MohammadBahemmat/V2ray-Collector/main/all_servers.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/10ium-VpnClashFaCollector-v2ray_free_config_iran.txt",
+"https://raw.githubusercontent.com/MahanKenway/Freedom-V2Ray/HEAD/configs/vmess.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/F0rc3Run_shadowsocks",
+"https://raw.githubusercontent.com/Mehinator/Derafsh/main/derafsh_sources.json",
+"https://limilco.github.io/v2r/sub/4.txt#V2R-4",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/10ium-telegram-configs-collector-non-tls",
+"https://raw.githack.com/sakazxc1400-creator/free-vpn-sub/data/output/sub.txt",
+"https://raw.githack.com/igareck/vpn-configs-for-russia/main/Export/Base64/PROXIES_ONLY/BLACK_VLESS_RUS_mobile_base64.txt",
+"https://vless.svinakraft.workers.dev/Top500.txt",
+"https://translate.yandex.ru/translate?url=https://bitbucket.org/igareck/vpn-configs-for-russia/raw/main/Export/Base64/PROXIES_ONLY/BLACK_VLESS_RUS_mobile_base64.txt&lang=de-de",
+"https://gitlab.com/igareck/vpn-configs-for-russia/-/raw/main/BLACK_VLESS_RUS_mobile.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/F0rc3Run_shadowsocks",
+"https://raw.githubusercontent.com/asgharkapk/Sub-Config-Extractor/refs/heads/main/output_configs/mixed/10ium/HiN-VPN/subscription/hiddify/mix.yaml",
+"https://raw.githubusercontent.com/Maskkost93/kizyak-vpn-4.0/refs/heads/main/kizyakbeta7.txt",
+"https://raw.githubusercontent.com/longlon/v2ray-config/HEAD/Sub23.txt",
+"https://raw.githubusercontent.com/MahanKenway/Pusheen-V2Ray/main/subscriptions/reachable-vless.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/countries/SK.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/countries/SK.txt",
+"https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/refs/heads/main/Export/Base64/PROXIES_ONLY/Vless-Reality-White-Lists-Rus-Mobile-base64.txt",
+"https://raw.githubusercontent.com/asgharkapk/Sub-Config-Extractor/refs/heads/main/output_configs/mixed/darkvpn.yaml",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/countries/fr.txt",
+"https://raw.githubusercontent.com/10ium/ScrapeAndCategorize/refs/heads/main/output_configs/UAE.txt",
+"https://gitea.com/igareck/vpn-configs-for-russia/raw/branch/main/Vless-Reality-White-Lists-Rus-Mobile.txt",
+"https://raw.githubusercontent.com/Danialsamadi/v2go/main/Splitted-By-Protocol/cloudflare.txt",
+"https://raw.githubusercontent.com/10ium/ScrapeAndCategorize/refs/heads/main/output_configs/Seychelles.txt",
+"https://raw.githubusercontent.com/Danialsamadi/v2go/main/Splitted-By-Protocol/ss.txt",
+"https://raw.githubusercontent.com/ShatakVPN/ConfigForge-V2Ray/main/configs/hu/all.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/10Dream-VpnClashFaCollector-gemini_passed.txt",
+"https://raw.githubusercontent.com/10ium/ScrapeAndCategorize/refs/heads/main/output_configs/Italy.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/reality.txt",
+"https://raw.githubusercontent.com/6b3478/telegram-configs-collector2/main/countries/ba/mixed",
+"https://raw.githack.com/Maskkost93/kizyak-vpn-4.0/refs/heads/main/kizyakbeta8.txt",
+"https://raw.githubusercontent.com/yy1588133/proxy-pool/main/v2ray.txt",
+"https://raw.githubusercontent.com/ShatakVPN/ConfigForge-V2Ray/main/configs/pt/all.txt",
+"https://raw.githubusercontent.com/Argh94/V2RayAutoConfig/refs/heads/main/configs/Indonesia.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/batches/v2ray/batch_006.txt",
+"https://raw.githubusercontent.com/ramram33/Ram-v2ray-configs/HEAD/reality_strict_configs_base64.txt",
+"https://raw.githubusercontent.com/sakha1370/OpenRay/main/output/country/FR.txt",
+"https://raw.githubusercontent.com/coldwater-10/V2ray-Config/main/Sub5.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/countries/RO.txt",
+"https://raw.githubusercontent.com/MatinGhanbari/v2ray-configs/main/subscriptions/filtered/subs/trojan.txt",
+"https://raw.githubusercontent.com/Au1rxx/free-vpn-subscriptions/main/output/stable/v2ray-base64-0003.txt",
+"https://raw.githubusercontent.com/roosterkid/openproxylist/main/V2RAY_BASE64.txt",
+"https://raw.githubusercontent.com/Argh94/V2RayAutoConfig/refs/heads/main/configs/Canada.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/grpc.txt",
+"https://raw.githubusercontent.com/Argh94/V2RayAutoConfig/refs/heads/main/configs/Sweden.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/10ium-V2Hub3-shadowsocks",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/031.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/countries/jp.txt",
+"https://raw.githubusercontent.com/Hidashimora/free-vpn-anti-rkn/main/configs/30.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/countries/HU.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/countries/HU.txt",
+"https://raw.githubusercontent.com/Mokafela/Config-Finder/master/split/sub-FR.txt",
+"https://raw.githubusercontent.com/lorenzazy7kenyon/free-vpn-subscriptions/main/output/by-country/v2ray-base64-SG.txt",
+"https://raw.githubusercontent.com/asgharkapk/Sub-Config-Extractor/refs/heads/main/output_configs/mixed/10ium/HiN-VPN/subscription/source/base64/conectvpn10.yaml",
+"https://raw.githubusercontent.com/6b3478/telegram-configs-collector2/main/countries/se/mixed",
+"https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/detailed/trojan/2053.txt",
+"https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/sub/port_8080.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/10ium-V2Hub3-shadowsocks",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/batches/v2ray/batch_007.txt",
+"https://raw.githubusercontent.com/TelegaVPN/free-vpn-keys/main/sub/base64/for-russia.txt",
+"https://codeberg.org/telegavpn/free-vpn-keys/raw/branch/main/sub/base64/for-russia.txt",
+"https://raw.githubusercontent.com/pie-with-jam/PulseProxy/main/githubmirror/22.txt",
+"https://raw.githubusercontent.com/10ium/V2Hub3/refs/heads/main/Split/Normal/shadowsocks",
+"https://raw.githubusercontent.com/ARSHANONY/V2sub/HEAD/sub_vip.txt",
+"https://raw.githubusercontent.com/liMilCo/v2r/main/pro/ss.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/countries/BE.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/countries/BE.txt",
+"https://raw.githubusercontent.com/10ium/ScrapeAndCategorize/refs/heads/main/output_configs/Russia.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/countries/fi.txt",
+"https://raw.githubusercontent.com/longlon/v2ray-config/HEAD/Sub9.txt",
+"https://raw.githubusercontent.com/rango-cfs/NewCollector/refs/heads/main/v2ray_links.txt",
+"https://raw.githubusercontent.com/10ium/ScrapeAndCategorize/refs/heads/main/output_configs/Netherlands.txt",
+"https://raw.githubusercontent.com/free-nodes/v2rayfree/main/sub",
+"https://raw.githubusercontent.com/liMilCo/v2r/main/sub/4.txt#V2R-4",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/awesome-vpn-awesome-vpn-all",
+"https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/Export/Base64/PROXIES_ONLY/BLACK_VLESS_RUS_base64.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/peasoft-NoMoreWalls-list_raw.txt",
+"https://raw.githubusercontent.com/BlackKillrt/config_for_V2Ray/HEAD/ConfigMan",
+"https://raw.githubusercontent.com/nyeinkokoaung404/V2ray-Configs/main/Splitted-By-Protocol/trojan.txt",
+"https://raw.githubusercontent.com/Danialsamadi/v2go/main/Splitted-By-Protocol/vless.txt",
+"https://raw.githubusercontent.com/pie-with-jam/PulseProxy/main/githubmirror/29.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/countries/RO.txt",
+"https://raw.githubusercontent.com/whoahaow/rjsxrd/main/githubmirror/bypass/bypass-1.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/countries/EE.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/countries/EE.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/batches/v2ray/batch_001.txt",
+"https://raw.githubusercontent.com/ProblemTheCode/SylphNet-public/main/sub/sub.txt",
+"https://raw.githubusercontent.com/pie-with-jam/5ubscrpt10n-Reborn/main/protocols/tr.txt",
+"https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/detailed/trojan/2087.txt",
+"https://raw.githubusercontent.com/drmikecrypto/PulseConfigs/HEAD/all/configs_base64.txt",
+"https://gitlab.com/igareck/vpn-configs-for-russia/-/raw/main/BLACK_VLESS_RUS.txt",
+"https://raw.githubusercontent.com/longlon/v2ray-config/HEAD/Sub12.txt",
+"https://raw.githubusercontent.com/3000S-HTTP/sNSub/main/output/best59_base64.txt",
+"https://raw.githubusercontent.com/3000S-HTTP/sNSub/main/output/best59.txt",
+"https://raw.githubusercontent.com/3000S-HTTP/sNSub/HEAD/output/best59.txt",
+"https://raw.githubusercontent.com/3000S-HTTP/sNSub/HEAD/output/best59_base64.txt",
+"https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/refs/heads/main/BLACK_VLESS_RUS.txt",
+"https://raw.githubusercontent.com/10ium/ScrapeAndCategorize/refs/heads/main/output_configs/Trojan.txt",
+"https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/refs/heads/main/Export/v2rayN_PC/BLACK_VLESS_RUS_v2rayN.txt",
+"https://raw.githubusercontent.com/barry-far/V2ray-Config/main/Splitted-By-Protocol/trojan.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/10ium-VpnClashFaCollector-ping_passed.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/peasoft-NoMoreWalls-list_raw.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/countries/fr.txt",
+"https://bitbucket.org/igareck/vpn-configs-for-russia/raw/main/Export/Base64/PROXIES_ONLY/BLACK_VLESS_RUS_base64.txt",
+"https://raw.githubusercontent.com/heliataromi/ConfigHub/subscription/trojan.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/countries/de.txt",
+"https://raw.githubusercontent.com/asgharkapk/Sub-Config-Extractor/refs/heads/main/output_configs/mixed/10ium/V2Hub3/merged_base64.yaml",
+"https://raw.githubusercontent.com/sakha1370/OpenRay/main/output/site_access/aistudio.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/grpc.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/reality.txt",
+"https://gh-proxy.com/raw.githubusercontent.com/Ruk1ng001/freeSub/main/v2ray",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/10ium-telegram-configs-collector-shadowsocks",
+"https://codeberg.org/igareck/vpn-configs-for-russia/raw/branch/main/BLACK_VLESS_RUS_mobile.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/protocols/trojan.txt",
+"https://raw.githubusercontent.com/lorenzazy7kenyon/free-vpn-subscriptions/main/output/by-country/v2ray-base64-NL.txt",
+"https://raw.githubusercontent.com/kort0881/vpn-vless-configs-russia/main/data/githubmirror/ru-sni-local/vless.txt",
+"https://raw.githubusercontent.com/svinakraft-maker/FlareFeed/main/public/trojan.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/sub.whitedns.shop",
+"https://raw.githubusercontent.com/mrdevmohamed/v2ray-configs/main/Sub2.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/10ium-V2Hub3-trojan",
+"https://raw.githubusercontent.com/whoahaow/rjsxrd/main/githubmirror/bypass/bypass-all.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/luxxuria-harvester-ping_tested.txt",
+"https://raw.githubusercontent.com/Firmfox/proxify/main/v2ray_configs/separated_by_protocol/trojan.txt",
+"https://raw.githubusercontent.com/kasesm/Free-Config/refs/heads/main/all_raw.txt",
+"https://raw.githubusercontent.com/MahanKenway/Pusheen-V2Ray/main/subscriptions/all.base64",
+"https://raw.githubusercontent.com/Firmfox/proxify/main/v2ray_configs/separated_by_protocol/vless.txt",
+"https://codeberg.org/igareck/vpn-configs-for-russia/raw/branch/main/Export/v2rayN_PC/BLACK_VLESS_RUS_mobile_v2rayN.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/countries/IR.txt",
+"https://raw.githubusercontent.com/EEvanescence/4Diana/main/By-protocol/vless.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/batches/v2ray/batch_002.txt",
+"https://codeberg.org/igareck/vpn-configs-for-russia/raw/branch/main/Export/Base64/PROXIES_ONLY/BLACK_VLESS_RUS_mobile_base64.txt",
+"https://raw.githubusercontent.com/shabane/kamaji/master/hub/CR.txt",
+"https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/sub/top100.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/10ium-V2Hub3-reality",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/countries/pl.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/countries/FI.txt",
+"https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/refs/heads/main/Export/v2rayN_PC/BLACK_VLESS_RUS_mobile_v2rayN.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/country/us.txt",
+"https://clashxw.github.io/uploads/2026/11/1-20261101.txt",
+"https://raw.githubusercontent.com/pie-with-jam/PulseProxy/main/githubmirror/12.txt",
+"https://raw.githubusercontent.com/heliataromi/ConfigHub/subscription/mixed_lite.txt",
+"https://raw.githubusercontent.com/ProblemTheCode/SylphNet-public/main/sub/sub_plain.txt",
+"https://raw.githubusercontent.com/FLAT447/v2ray-lists/main/BLACK_LTE.txt",
+"https://raw.githubusercontent.com/roosterkid/openproxylist/refs/heads/main/V2RAY_RAW.txt",
+"https://raw.githubusercontent.com/TelegaVPN/free-vpn-keys/main/sub/v2raytun/all.txt",
+"https://raw.githubusercontent.com/miladtahanian/V2RayCFGDumper/refs/heads/main/sub.txt",
+"https://raw.githubusercontent.com/LeilaoMi/AutoMergePublicNodes-Optimized/main/output/verified.txt",
+"https://raw.githubusercontent.com/shabane/kamaji/master/hub/self/tested/b64/trojan.txt",
+"https://raw.githubusercontent.com/Shayanthn/V2ray-Tester-Pro/main/working_configs.json",
+"https://raw.githubusercontent.com/0xRadikal/Free-v2ray-Configs/main/protocols/trojan.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/countries/ie.txt",
+"https://raw.githubusercontent.com/Ruk1ng001/freeSub/main/v2ray",
+"https://raw.githubusercontent.com/3000S-HTTP/sNSub/main/output/trojan_base64.txt",
+"https://raw.githubusercontent.com/FLAT447/v2ray-lists/main/BASE64/BLACK_LTE.txt",
+"https://raw.githubusercontent.com/6b3478/telegram-configs-collector2/main/countries/ee/mixed",
+"https://raw.githubusercontent.com/SoliSpirit/SolVPN/main/Subscribes/sub1.txt",
+"https://raw.githubusercontent.com/asgharkapk/Sub-Config-Extractor/refs/heads/main/output_configs/mixed/10ium/HiN-VPN/subscription/source/base64/configfa.yaml",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/countries/SI.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/countries/SI.txt",
+"https://raw.githubusercontent.com/jafarm83/ConfigV2Ray/main/jafar.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/awesome-vpn-awesome-vpn-all",
+"https://raw.githubusercontent.com/pie-with-jam/PulseProxy/main/githubmirror/5.txt",
+"https://raw.githubusercontent.com/PlanAslii/vira-v2ray-configs/main/countries/NL.txt",
+"https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/Eternity",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/014.txt",
+"https://vpnkeys.me/llms-full.txt",
+"https://freevpnkeys.com/api/v1/keys",
+"https://raw.githubusercontent.com/HamoonSoleimani/Pr0xySh4rk/refs/heads/main/Pr0xySh4rk_SubBase64.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/004.txt",
+"https://raw.githubusercontent.com/TelegaVPN/free-vpn-keys/main/sub/base64/all.txt",
+"https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/sub/port_2086.txt",
+"https://raw.githubusercontent.com/Freedom-Guard-Builder/Freedom-Finder/HEAD/out/configs/mixed.txt",
+"https://raw.githack.com/igareck/vpn-configs-for-russia/main/Export/Base64/PROXIES_ONLY/BLACK_VLESS_RUS_base64.txt",
+"https://bitbucket.org/igareck/vpn-configs-for-russia/raw/main/Export/v2rayN_PC/BLACK_VLESS_RUS_v2rayN.txt",
+"https://raw.githubusercontent.com/StarLordKarma/v2rayn-auto-subscription/main/working_base64.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/countries/PL.txt",
+"https://codeberg.org/igareck/vpn-configs-for-russia/raw/branch/main/BLACK_VLESS_RUS.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/datacenters/akamai.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/datacenters/akamai.txt",
+"https://raw.githubusercontent.com/Realmec21/Xer0x-vless-hub/main/subscriptions/fast.txt",
+"https://shadowmere.xyz/api/b64sub/",
+"https://raw.githubusercontent.com/SoliSpirit/SolVPN/main/Countrys/Germany.txt",
+"https://raw.githubusercontent.com/mehrdadmb2/V2ray_Sub/main/Mix.txt",
+"https://raw.githubusercontent.com/6b3478/telegram-configs-collector2/main/countries/gb/mixed",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/v2FreeHub-v2hub-configs-Sub-AutoUpdate",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/countries/SE.txt",
+"https://shadowmere.xyz/api/b64sub",
+"https://raw.githubusercontent.com/kasesm/Free-Config/main/vless_raw.txt",
+"https://gitea.com/igareck/vpn-configs-for-russia/raw/branch/main/Export/v2rayN_PC/BLACK_VLESS_RUS_v2rayN.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/datacenters/gcore.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/datacenters/gcore.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/countries/DE.txt",
+"https://raw.githubusercontent.com/Hidashimora/free-vpn-anti-rkn/main/configs/32.1.txt",
+"https://raw.githubusercontent.com/SoliSpirit/SolVPN/main/Protocols/trojan.txt",
+"https://raw.githubusercontent.com/awesome-vpn/awesome-vpn/master/all",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/countries/se.txt",
+"https://raw.githubusercontent.com/TheCrowCreature/v2rayExtractor/refs/heads/main/mix/sub.html",
+"https://raw.githubusercontent.com/zhangdunlong/free-v2ray-nodes/main/unique_nodes.txt",
+"https://raw.githubusercontent.com/zhangdunlong/free-v2ray-nodes/main/nodes_base64.txt",
+"https://raw.githubusercontent.com/0xRadikal/Free-v2ray-Configs/main/Countries/Canada.txt",
+"https://raw.githubusercontent.com/pie-with-jam/5ubscrpt10n-Reborn/main/mini/m1n1-5ub-26.txt",
+"https://raw.githubusercontent.com/DrFarhad2/v2ray_configs_pools/HEAD/v2ray_configs_pools%20vip.txt",
+"https://raw.githubusercontent.com/Argh94/V2RayAutoConfig/refs/heads/main/configs/USA.txt",
+"https://raw.githubusercontent.com/barry-far/V2ray-config/main/Sub4.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/10ium-V2rayCollectorLite-mixed_iran.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/10ium-V2rayCollectorLite-vless_iran.txt",
+"https://raw.githubusercontent.com/alirzza9/ConfigsHUB-VLESS/HEAD/sub/vless-all.txt",
+"https://raw.githubusercontent.com/6b3478/telegram-configs-collector2/main/networks/grpc",
+"https://raw.githubusercontent.com/grisha-seleznev/free-vless-keys-russia/main/sub.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/countries/SE.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/countries/SG.txt",
+"https://raw.githubusercontent.com/Idolvpn/Automate-V2ray-Config-Collector/main/configs/vless.txt",
+"https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/BLACK_VLESS_RUS_mobile.txt",
+"https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/refs/heads/main/Export/Base64/PROXIES_ONLY/BLACK_VLESS_RUS_mobile_base64.txt",
+"https://raw.githubusercontent.com/lorenzazy7kenyon/free-vpn-subscriptions/main/output/by-country/v2ray-base64-FR.txt",
+"https://raw.githubusercontent.com/mehrtat/vless-collector/main/sub.txt",
+"https://raw.githubusercontent.com/alirzza9/ConfigsHUB-VLESS/HEAD/sub/vless-all-plain.txt",
+"https://raw.githubusercontent.com/ermaozi/get_subscribe/main/subscribe/v2ray.txt",
+"https://bitbucket.org/igareck/vpn-configs-for-russia/raw/main/Export/v2rayN_PC/BLACK_VLESS_RUS_mobile_v2rayN.txt",
+"https://raw.githubusercontent.com/zieng2/wl/main/vless_universal.txt",
+"https://raw.githubusercontent.com/FLAT447/v2ray-lists/main/BASE64/BLACK_FULL.txt",
+"https://raw.githubusercontent.com/Hidashimora/free-vpn-anti-rkn/main/configs/4.1.txt",
+"https://raw.githubusercontent.com/AzadNetCH/Clash/main/AzadNet.txt",
+"https://raw.githubusercontent.com/MahanKenway/Freedom-V2Ray/main/configs/ss_sub.txt",
+"https://translate.yandex.ru/translate?url=https://bitbucket.org/igareck/vpn-configs-for-russia/raw/main/BLACK_VLESS_RUS_mobile.txt&lang=de-de",
+"https://raw.githubusercontent.com/PlanAslii/vira-v2ray-configs/main/countries/US.txt",
+"https://raw.githubusercontent.com/asgharkapk/Sub-Config-Extractor/refs/heads/main/output_configs/mixed/Surfboardv2ray/TGParse/splitted/trojan.yaml",
+"https://raw.githubusercontent.com/liMilCo/v2r/main/best.txt",
+"https://tuftytech.github.io/ShellShift/sub_all.txt",
+"https://raw.githubusercontent.com/lorenzazy7kenyon/free-vpn-subscriptions/main/output/by-country/v2ray-base64-JP.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/zieng2-wl-vless_universal.txt",
+"https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/refs/heads/main/BLACK_VLESS_RUS_mobile.txt",
+"https://raw.githubusercontent.com/lanzm/MetaFetch/master/list.b64",
+"https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/main/Export/Base64/PROXIES_ONLY/BLACK_VLESS_RUS_mobile_base64.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/10ium-telegram-configs-collector-non-tls",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/countries/LV.txt",
+"https://raw.githubusercontent.com/0xRadikal/Free-v2ray-Configs/main/top100.txt",
+"https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/detailed/vmess/443.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/Delta-Kronecker_trojan",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/countries/AU.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/zieng2-wl-vless_universal.txt",
+"https://raw.githubusercontent.com/drmikecrypto/PulseConfigs/main/candidates.json",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/021.txt",
+"https://translate.yandex.ru/translate?url=https://bitbucket.org/igareck/vpn-configs-for-russia/raw/main/BLACK_VLESS_RUS.txt&lang=de-de",
+"https://gitea.com/igareck/vpn-configs-for-russia/raw/branch/main/Export/Base64/PROXIES_ONLY/BLACK_VLESS_RUS_mobile_base64.txt",
+"https://raw.githubusercontent.com/sakha1370/OpenRay/main/output_iran/irancell_top100.txt",
+"https://raw.githack.com/igareck/vpn-configs-for-russia/main/Export/v2rayN_PC/BLACK_VLESS_RUS_mobile_v2rayN.txt",
+"https://raw.githubusercontent.com/10ium/ScrapeAndCategorize/refs/heads/main/output_configs/Finland.txt",
+"https://raw.githubusercontent.com/MahanKenway/Pusheen-V2Ray/main/subscriptions/all-vless.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/countries/es.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/10ium-VpnClashFaCollector-trojan.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/country/uk.txt",
+"https://raw.githubusercontent.com/rtwo2/FastNodes/main/sub/countries/MX.txt",
+"https://raw.githubusercontent.com/6b3478/telegram-configs-collector2/main/countries/ro/mixed",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/tcp-pass/batch_013.txt",
+"https://raw.githubusercontent.com/kort0881/vpn-vless-configs-russia/main/data/githubmirror/clean/trojan.txt",
+"https://raw.githubusercontent.com/morpheusadam/v2ray-config/main/subs/bundles/tls.txt",
+"https://raw.githubusercontent.com/kort0881/vpn-vless-configs-russia/main/output/vless.txt",
+"https://raw.githubusercontent.com/morpheusadam/v2ray-config/main/subs/bundles/lite.txt",
+"https://raw.githubusercontent.com/morpheusadam/v2ray-config/main/subs/bundles/best.txt",
+"https://raw.githubusercontent.com/morpheusadam/v2ray-config/main/subs/bundles/all.txt",
+"https://raw.githubusercontent.com/morpheusadam/v2ray-config/main/subs/bundles/trojan.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/protocols/trojan.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/tcp-pass/batch_014.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/009.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/tcp-pass/batch_015.txt",
+"https://raw.githubusercontent.com/Abobirec/bezdelnicha-vpn0chek/HEAD/BLACK_VLESS_RUS_mobile.txt",
+"https://raw.githubusercontent.com/rtwo2/FastNodes/main/sub/countries/MH.txt",
+"https://raw.githubusercontent.com/MahanKenway/Freedom-V2Ray/main/configs/trojan.txt",
+"https://raw.githubusercontent.com/pie-with-jam/5ubscrpt10n-Reborn/main/mini/m1n1-5ub-14.txt",
+"https://raw.githubusercontent.com/kort0881/vpn-vless-configs-russia/main/data/githubmirror/clean/vless.txt",
+"https://raw.githubusercontent.com/MahanKenway/Freedom-V2Ray/main/configs/trojan_sub.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/tcp-pass/batch_004.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/tcp-pass/batch_004.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/tcp-pass/batch_011.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/tcp-pass/batch_011.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/tcp-pass/batch_007.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/tcp-pass/batch_008.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/tcp-pass/batch_006.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/tcp-pass/batch_008.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/tcp-pass/batch_006.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/tcp-pass/batch_003.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/tcp-pass/batch_005.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/tcp-pass/batch_005.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/tcp-pass/batch_012.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/010.txt",
+"https://raw.githubusercontent.com/MahanKenway/Freedom-V2Ray/HEAD/configs/trojan.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/tcp-pass/batch_002.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/tcp-pass/batch_001.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/013.txt",
+"https://raw.githubusercontent.com/6b3478/telegram-configs-collector2/main/countries/lu/mixed",
+"https://raw.githubusercontent.com/TheCrowCreature/v2rayExtractor/refs/heads/main/trojan.html",
+"https://raw.githubusercontent.com/morpheusadam/v2ray-config/main/subs/bundles/mini.txt",
+"https://alireza786786.github.io/Free-V2ray-Configs/servers/trojan_servers.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/tcp-pass/batch_009.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/tcp-pass/batch_013.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/tcp-pass/reality.txt",
+"https://raw.githubusercontent.com/rtwo2/FastNodes/main/sub/countries/IM.txt",
+"https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/sub/trojan.txt",
+"https://raw.githubusercontent.com/morpheusadam/v2ray-config/main/subs/bundles/medium.txt",
+"https://raw.githubusercontent.com/kort0881/vpn-vless-configs-russia/main/data/githubmirror/ru-sni/vless.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/tcp-pass/batch_016.txt",
+"https://raw.githubusercontent.com/6b3478/telegram-configs-collector2/main/countries/kz/mixed",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/non-tls.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/datacenters/cloudflare.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/xhttp.txt",
+"https://raw.githubusercontent.com/thealiiakbarii-ai/VCC/main/configs/all.txt",
+"https://raw.githubusercontent.com/thealiiakbarii-ai/VCC/main/configs/vless.txt",
+"https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/detailed/trojan/443.txt",
+"https://raw.githubusercontent.com/penhandev/AutoAiVPN/HEAD/allConfigs.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/non-tls.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/countries/US.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/tcp-pass/batch_010.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/xhttp.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/030.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/tls.txt",
+"https://gh-proxy.com/https://raw.githubusercontent.com/zueston/proxy-hub/main/out/base64.txt",
+"https://ghproxy.net/https://raw.githubusercontent.com/zueston/proxy-hub/main/out/base64.txt",
+"https://gcore.jsdelivr.net/gh/zueston/proxy-hub@main/out/base64.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/10ium-telegram-configs-collector-tls",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/tls.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/10ium-telegram-configs-collector-tls",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/020.txt",
+"https://raw.githubusercontent.com/aydinverse/my-sub/HEAD/sub.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/datacenters/cloudflare.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/ipv4.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/10ium-telegram-configs-collector-ws",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/ipv4.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/ws.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/ws.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/countries/US.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/10ium-telegram-configs-collector-ws",
+"https://raw.githubusercontent.com/Leon406/SubCrawler/master/sub/share/vless",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/10ium-telegram-configs-collector-trojan",
+"https://raw.githubusercontent.com/MohammadBahemmat/V2ray-Collector/main/servers/trojan_servers.txt",
+"https://raw.githubusercontent.com/Danialsamadi/v2go/main/Splitted-By-Protocol/trojan.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/10ium-telegram-configs-collector-vless",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/10ium-telegram-configs-collector-vless",
+"https://raw.githubusercontent.com/LeilaoMi/AutoMergePublicNodes-Optimized/main/output/global.txt",
+"https://raw.githubusercontent.com/R3ZARAHIMI/tg-v2ray-configs-every2h/main/conf-week.txt",
+"https://raw.githubusercontent.com/EEvanescence/4Diana/main/By-protocol/cloudflare.txt",
+"https://raw.githubusercontent.com/kort0881/vpn-vless-configs-russia/main/data/githubmirror/clean/ss.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/protocols/vless.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/037.txt",
+"https://raw.githubusercontent.com/chenzhihan1751-cyber/node-sub-zixf/HEAD/sub/base64.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/protocols/vless.txt",
+"https://raw.githubusercontent.com/Freedom-Guard-Builder/Freedom-Finder/main/out/channels/PSG.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/tcp-pass/batch_012.txt",
+"https://raw.githubusercontent.com/morpheusadam/v2ray-config/main/subs/bundles/iran.txt",
+"https://raw.githubusercontent.com/pie-with-jam/5ubscrpt10n-Reborn/main/mini/m1n1-5ub-13.txt",
+"https://raw.githubusercontent.com/MahanKenway/Freedom-V2Ray/HEAD/configs/trojan_sub.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/025.txt",
+"https://raw.githubusercontent.com/6b3478/telegram-configs-collector2/main/countries/na/mixed",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/countries/NL.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/10ium-V2Hub3-trojan",
+"https://raw.githubusercontent.com/SoliSpirit/SolVPN/main/all_configs.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/023.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/countries/us.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/countries/us.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/countries/NL.txt",
+"https://raw.githubusercontent.com/Mokafela/Config-Finder/master/split/sub-ALL.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/10ium-telegram-configs-collector-trojan",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/SoliSpirit-v2ray-configs-trojan.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/002.txt",
+"https://raw.githubusercontent.com/myominn062-svg/mk-studio-vpn-service/main/trojan_configs.txt",
+"https://raw.githubusercontent.com/pie-with-jam/PulseProxy/main/githubmirror/30.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/countries/DE.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/tcp-pass/batch_003.txt",
+"https://raw.githubusercontent.com/YawStar/Proxy-Hunter/refs/heads/main/configs/proxy_configs_deduplicated.txt",
+"https://raw.githubusercontent.com/MrTelepathic/v2ray-sub/refs/heads/main/configs.txt",
+"https://raw.githubusercontent.com/pog7x/vpn-configs/refs/heads/master/githubmirror/10.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/024.txt",
+"https://raw.githubusercontent.com/morpheusadam/v2ray-config/main/subs/bundles/shadowsocks.txt",
+"https://raw.githubusercontent.com/sakha1370/OpenRay/main/output/kind/trojan.txt",
+"https://raw.githubusercontent.com/chenzhihan1751-cyber/node-sub-zixf/main/sub/v2ray.txt",
+"https://raw.githubusercontent.com/Argh94/V2RayAutoConfig/refs/heads/main/configs/CentralAfricanRepublic.txt",
+"https://raw.githubusercontent.com/cyrusalbert/ArashOnline-Public/main/arashonline.txt#ArashOnline-Public",
+"https://raw.githubusercontent.com/miraali1372/mirsub/main/subscription.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/019.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/10ium-VpnClashFaCollector-trojan.txt",
+"https://raw.githubusercontent.com/drmikecrypto/PulseConfigs/main/verified/configs_base64.txt",
+"https://raw.githubusercontent.com/Surfboardv2ray/v2ray-worker-sub/refs/heads/master/providers/providers",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/tcp-pass/batch_007.txt",
+"https://raw.githubusercontent.com/thealiiakbarii-ai/VCC/main/configs/lite.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/tcp-pass/batch_009.txt",
+"https://raw.githubusercontent.com/kort0881/vpn-vless-configs-russia/main/data/githubmirror/clean/hysteria2.txt",
+"https://raw.githubusercontent.com/6b3478/telegram-configs-collector2/main/subscribe/protocols/trojan",
+"https://raw.githubusercontent.com/MahanKenway/Freedom-V2Ray/main/configs/vless_sub.txt",
+"https://raw.githubusercontent.com/MahanKenway/Freedom-V2Ray/HEAD/configs/vless.txt",
+"https://raw.githubusercontent.com/ninjastrikers/Nexus-nodes/main/configs/all.txt",
+"https://raw.githubusercontent.com/drmikecrypto/PulseConfigs/HEAD/verified/configs_base64.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/017.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/datacenters/fastly.txt",
+"https://raw.githubusercontent.com/rtwo2/FastNodes/main/sub/countries/MT.txt",
+"https://raw.githubusercontent.com/Danialsamadi/v2go/main/Sub1.txt",
+"https://raw.githubusercontent.com/aqayerez/MatnOfficial-VPN/refs/heads/main/MatnOfficial",
+"https://raw.githubusercontent.com/aqayerez/MatnOfficial-VPN/refs/heads/main/MatnOfficial#MatnOfficial",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/tcp-pass/batch_002.txt",
+"https://raw.githubusercontent.com/lorenzazy7kenyon/free-vpn-subscriptions/main/output/v2ray-base64.txt",
+"https://raw.githubusercontent.com/6b3478/telegram-configs-collector2/main/countries/lt/mixed",
+"https://raw.githubusercontent.com/drmikecrypto/PulseConfigs/HEAD/verified/configs.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/tcp-pass/batch_001.txt",
+"https://raw.githubusercontent.com/6b3478/telegram-configs-collector2/main/countries/ph/mixed",
+"https://raw.githubusercontent.com/3inker/v2ray-subscription/main/subs/all_not_ru.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/10ium-V2Hub3-vless",
+"https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/detailed/vless/80.txt",
+"https://raw.githubusercontent.com/kort0881/vpn-checker-backend/main/checked/RU_Best/ru_white_part3.txt",
+"https://raw.githubusercontent.com/rtwo2/FastNodes/main/sub/countries/EE.txt",
+"https://vless.svinakraft.workers.dev/vless.txt",
+"https://raw.githubusercontent.com/mrdevmohamed/v2ray-configs/main/All_Configs_base64_Sub.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/0xRadikal-Free-v2ray-secure.txt",
+"https://gh-proxy.com/https://raw.githubusercontent.com/chenzhihan1751-cyber/node-sub-zixf/main/sub/base64.txt",
+"https://raw.githubusercontent.com/6b3478/telegram-configs-collector2/main/countries/si/mixed",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/roosterkid-openproxylist-V2RAY_RAW.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/003.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/0xRadikal-Free-v2ray-secure.txt",
+"https://raw.githubusercontent.com/ZendanTeam/SS44-sub/main/SS44.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/countries/SC.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/countries/SC.txt",
+"https://raw.githubusercontent.com/ninjastrikers/Nexus-nodes/main/configs/vless.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/datacenters/fastly.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/022.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/007.txt",
+"https://raw.githubusercontent.com/chenzhihan1751-cyber/node-sub-zixf/main/sub/base64.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/tcp.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/027.txt",
+"https://raw.githubusercontent.com/pie-with-jam/5ubscrpt10n-Reborn/main/mini/m1n1-5ub-11.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/tcp-pass/batch_014.txt",
+"https://vless.svinakraft.workers.dev/fastest.txt",
+"https://raw.githubusercontent.com/pie-with-jam/PulseProxy/main/githubmirror/13.txt",
+"https://raw.githubusercontent.com/svinakraft-maker/FlareFeed/main/public/fastest.txt",
+"https://raw.githubusercontent.com/gbcwror/v2ray-tester/HEAD/configs/vless/vless-1.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/flaafix-AetrisVPN-black-list-configs.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/028.txt",
+"https://raw.githubusercontent.com/hiztin/VLESS-PO-GRIBI/main/deploy/subscriptions/1.txt",
+"https://raw.githubusercontent.com/amirrezaalavi/Viberay/HEAD/testdata/subscriptions/chunk_003.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/countries/nl.txt",
+"https://raw.githubusercontent.com/ZendanTeam/SS44-sub/main/SS44-base64.txt",
+"https://raw.githubusercontent.com/amirrezaalavi/Viberay/HEAD/testdata/subscriptions/chunk_002.txt",
+"https://raw.githubusercontent.com/0xRadikal/Free-v2ray-Configs/main/secure/configs_base64.txt",
+"https://raw.githubusercontent.com/chenzhihan1751-cyber/node-sub-zixf/HEAD/sub/v2ray.txt",
+"https://raw.githubusercontent.com/sakazxc1400-creator/free-vpn-sub/data/output/sub-full.txt",
+"https://raw.githubusercontent.com/pie-with-jam/5ubscrpt10n-Reborn/main/mini/m1n1-5ub-28.txt",
+"https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/detailed/vless/2053.txt",
+"https://raw.githubusercontent.com/aviamastersgh/vpn-free-russia/main/verified_configs.txt",
+"https://raw.githubusercontent.com/0xRadikal/Free-v2ray-Configs/main/verified/configs.txt",
+"https://raw.githubusercontent.com/indelingDanil/MyAppVPN-subs/output/vless.txt",
+"https://raw.githack.com/indelingDanil/MyAppVPN-subs/output/vless.txt",
+"https://raw.githubusercontent.com/rtwo2/FastNodes/main/sub/top_ipv6.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/all_configs.txt",
+"https://alireza786786.github.io/Free-V2ray-Configs/servers/vless_servers.txt",
+"https://raw.githubusercontent.com/luxxuria/harvester/main/ping_tested.txt",
+"https://raw.githubusercontent.com/cyrusalbert/ArashOnline-GO/refs/heads/main/arashonline.txt#ArashOnline-GO",
+"https://raw.githubusercontent.com/iampedii/whitedns-sub/refs/heads/main/base64.txt",
+"https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/sub/vless.txt",
+"https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/sub/port_8443.txt",
+"https://raw.githubusercontent.com/TheCrowCreature/v2rayExtractor/refs/heads/main/vless.html",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/countries/CA.txt",
+"https://raw.githubusercontent.com/roosterkid/openproxylist/main/V2RAY.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/10ium-telegram-configs-collector-grpc",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/patt/batches/batch_001.txt",
+"https://raw.githubusercontent.com/asgharkapk/Sub-Config-Extractor/refs/heads/main/output_configs/mixed/10ium/HiN-VPN/subscription/hiddify/trojan.yaml",
+"https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/sub/port_443.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/036.txt",
+"https://raw.githubusercontent.com/mrdevmohamed/v2ray-configs/main/Sub1.txt",
+"https://raw.githubusercontent.com/kaoxindalao/v2raycheshi/main/v2raycheshi",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/015.txt",
+"https://raw.githubusercontent.com/Mai-kun/vless-sub-hub/main/docs/sub/all_raw.txt",
+"https://raw.githubusercontent.com/rtwo2/FastNodes/main/sub/verified_tls.txt",
+"https://raw.githubusercontent.com/MahanKenway/Freedom-V2Ray/main/configs/mix.txt",
+"https://raw.githubusercontent.com/YawStar/Proxy-Hunter/refs/heads/main/configs/proxy_configs_tested.txt",
+"https://raw.githubusercontent.com/roosterkid/openproxylist/main/V2RAY_RAW.txt",
+"https://raw.githubusercontent.com/asgharkapk/Sub-Config-Extractor/refs/heads/main/output_configs/mixed/Barabama_clashmeta.yaml",
+"https://raw.githubusercontent.com/Argh94/V2RayAutoConfig/refs/heads/main/configs/France.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/001.txt",
+"https://raw.githubusercontent.com/mohammadaz2/v2rayConfigsForYou/main/configs.txt",
+"https://raw.githubusercontent.com/ninjastrikers/Nexus-nodes/main/configs/light.txt",
+"https://raw.githubusercontent.com/mmkeshavarzz/v2ray-configs/HEAD/sub.txt",
+"https://raw.githubusercontent.com/6b3478/telegram-configs-collector2/main/countries/br/mixed",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/VOID-Anonymity-V.O.I.D-VPN_Bypass-url_work.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/10ium-VpnClashFaCollector-speed_passed.txt",
+"https://raw.githubusercontent.com/Argh94/V2RayAutoConfig/refs/heads/main/configs/Samoa.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/patt/all.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/patt/protocols/vless.txt",
+"https://raw.githubusercontent.com/mrdevmohamed/v2ray-configs/main/Splitted-By-Protocol/trojan.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/patt/all.txt",
+"https://raw.githubusercontent.com/Meret2019/vless-subscription/HEAD/subscription.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/reality/reality.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/10ium-V2Hub3-vless",
+"https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/sub/port_2096.txt",
+"https://raw.githubusercontent.com/lorenzazy7kenyon/free-vpn-subscriptions/main/output/by-country/v2ray-base64-CA.txt",
+"https://raw.githubusercontent.com/0xRadikal/Free-v2ray-Configs/main/verified/configs_base64.txt",
+"https://raw.githubusercontent.com/0xRadikal/Free-v2ray-Configs/main/fast/configs_base64.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/tcp-pass/batch_010.txt",
+"https://raw.githubusercontent.com/mehrdadmb2/V2ray_Sub/HEAD/Mix.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/006.txt",
+"https://raw.githubusercontent.com/morpheusadam/v2ray-config/main/subs/bundles/vless.txt",
+"https://raw.githubusercontent.com/ProblemTheCode/SylphNet-public/refs/heads/main/sub/sub_plain.txt",
+"https://raw.githubusercontent.com/6b3478/telegram-configs-collector2/main/countries/sc/mixed",
+"https://raw.githubusercontent.com/kasesm/Free-Config/refs/heads/main/vless_raw.txt",
+"https://raw.githubusercontent.com/zueston/proxy-hub/main/out/base64.txt",
+"https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/sub/port_2087.txt",
+"https://raw.githubusercontent.com/Mai-kun/vless-sub-hub/main/docs/sub/all.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/luxxuria-harvester-ping_tested.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/countries/LT.txt",
+"https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/detailed/vless/2096.txt",
+"https://raw.githubusercontent.com/MahanKenway/Freedom-V2Ray/main/configs/vless.txt",
+"https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/detailed/vless/443.txt",
+"https://raw.githubusercontent.com/rekt0ro/ProxyRift/main/subscriptions/light.txt",
+"https://raw.githubusercontent.com/YawStar/Proxy-Hunter/refs/heads/main/configs/proxy_configs.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/countries/CY.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/countries/GB.txt",
+"https://raw.githubusercontent.com/ninjastrikers/Nexus-nodes/main/configs/trojan.txt",
+"https://raw.githubusercontent.com/komoterdon/free-sub/HEAD/sub.txt",
+"https://leidahub.top/v2ray.txt",
+"https://raw.githubusercontent.com/mehrdadmb2/V2ray_Sub/refs/heads/main/Mix.txt",
+"https://raw.githubusercontent.com/Meret2019/vless-subscription/HEAD/subscription_base64.txt",
+"https://raw.githubusercontent.com/LalatinaHub/LatinaSub/main/result/sub",
+"https://raw.githubusercontent.com/luckylukam/tel-fetch1/HEAD/output/configs.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/VOID-Anonymity-V.O.I.D-VPN_Bypass-url_work.txt",
+"https://raw.githubusercontent.com/ZendanTeam/SS44-sub/main/SS44-gold.txt",
+"https://raw.githubusercontent.com/Freedom-Guard-Builder/Freedom-Finder/main/out/configs/mixed.txt",
+"https://raw.githubusercontent.com/svinakraft-maker/FlareFeed/main/public/Top500.txt",
+"https://raw.githubusercontent.com/ProblemTheCode/SylphNet-public/refs/heads/main/sub/sub.txt",
+"https://raw.githubusercontent.com/kasesm/Free-Config/refs/heads/main/trojan_raw.txt",
+"https://raw.githubusercontent.com/rtwo2/FastNodes/main/sub/countries/JO.txt",
+"https://raw.githubusercontent.com/kasesm/Free-Config/main/trojan_raw.txt",
+"https://raw.githubusercontent.com/LalatinaHub/LatinaSub/HEAD/result/sub",
+"https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/detailed/vless/8443.txt",
+"https://raw.githubusercontent.com/free18/v2ray/main/v.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/countries/de.txt",
+"https://raw.githubusercontent.com/Surfboardv2ray/TGParse/main/splitted/trojan",
+"https://raw.githubusercontent.com/pashadolf/Eternal-Sub/main/Github-Gemini.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/countries/RU.txt",
+"https://raw.githubusercontent.com/gbcwror/v2ray-tester/HEAD/configs/trojan/trojan-1.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/011.txt",
+"https://raw.githubusercontent.com/peasoft/NoMoreWalls/master/list_raw.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/countries/KZ.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/protocols/vless.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/all_configs.txt",
+"https://raw.githubusercontent.com/cbusifabcap/daily_free_vpn/main/sub/sub.yml",
+"https://raw.githubusercontent.com/mrdevmohamed/v2ray-configs/main/All_Configs_Sub.txt",
+"https://raw.githubusercontent.com/rtwo2/FastNodes/main/sub/countries/BG.txt",
+"https://raw.githubusercontent.com/R3ZARAHIMI/tg-v2ray-configs-every2h/main/Original-Configs.txt",
+"https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/detailed/vless/2087.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/032.txt",
+"https://raw.githubusercontent.com/PlanAslii/vira-v2ray-configs/main/all.txt",
+"https://raw.githubusercontent.com/zueston/proxy-hub/main/out/plain.txt",
+"https://raw.githubusercontent.com/gbcwror/v2ray-tester/HEAD/configs/cloudflare/cf-1.txt",
+"https://raw.githubusercontent.com/balochscript/free-vpn-configs/gh-pages/subscription-tcping.txt",
+"https://raw.githubusercontent.com/pie-with-jam/PulseProxy/main/githubmirror/28.txt",
+"https://raw.githubusercontent.com/CNT-Cafe/Public-Configs/main/%E2%9C%A7%20Public%20Configs",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/v2FreeHub-v2hub-configs-Sub-AutoUpdate",
+"https://raw.githubusercontent.com/pog7x/vpn-configs/refs/heads/master/githubmirror/5.txt",
+"https://raw.githubusercontent.com/nyeinkokoaung404/V2ray-Configs/main/configs/proxy_configs_tested.txt",
+"https://raw.githubusercontent.com/pie-with-jam/PulseProxy/main/githubmirror/10.txt",
+"https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/detailed/vless/8880.txt",
+"https://raw.githubusercontent.com/ShatakVPN/ConfigForge-V2Ray/main/configs/trojan.txt",
+"https://raw.githubusercontent.com/ssrsub/ssr/master/v2ray",
+"https://raw.githubusercontent.com/nyeinkokoaung404/V2ray-Configs/main/configs/proxy_configs.txt",
+"https://raw.githubusercontent.com/liMilCo/v2r/main/pro/trojan.txt",
+"https://raw.githubusercontent.com/liMilCo/v2r/main/pro/trojan.txt#V2R-Trojan",
+"https://raw.githubusercontent.com/itsyebekhe/PSG/main/config.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/035.txt",
+"https://raw.githubusercontent.com/PlanAslii/vira-v2ray-configs/main/protocols/vless.txt",
+"https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/sub/port_2095.txt",
+"https://raw.githubusercontent.com/Elvis-Nightingale/v2sub/HEAD/subscription.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/countries/GB.txt",
+"https://raw.githubusercontent.com/mrdevmohamed/v2ray-configs/main/Splitted-By-Protocol/vless.txt",
+"https://raw.githubusercontent.com/chaishpish/free_server_v2ray/main/@TFMTProto",
+"https://raw.githubusercontent.com/MahanKenway/Freedom-V2Ray/HEAD/configs/vless_sub.txt",
+"https://raw.githubusercontent.com/MahanKenway/Pusheen-V2Ray/main/subscriptions/reachable.base64",
+"https://raw.githubusercontent.com/rtwo2/FastNodes/main/sub/top.txt",
+"https://raw.githubusercontent.com/MahanKenway/Freedom-V2Ray/main/configs/mix_sub.txt",
+"https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/sub/port_8880.txt",
+"https://raw.githubusercontent.com/6b3478/telegram-configs-collector2/main/countries/ca/mixed",
+"https://raw.githubusercontent.com/VOID-Anonymity/V.O.I.D-VPN_Bypass/refs/heads/main/url_work.txt",
+"https://raw.githubusercontent.com/mohamadfg-dev/telegram-v2ray-configs-collector/main/category/Canada.txt",
+"https://raw.githubusercontent.com/rekt0ro/ProxyRift/main/subscriptions/all-base64.txt",
+"https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/sub/port_2052.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/protocols/trojan.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/tcp-pass/batch_015.txt",
+"https://raw.githubusercontent.com/mehrtat/vless-collector/main/vless.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/0xRadikal-Free-v2ray-verified.txt",
+"https://raw.githubusercontent.com/heliataromi/ConfigHub/subscription/trojan_base64.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/0xRadikal-Free-v2ray-fast.txt",
+"https://raw.githubusercontent.com/rtwo2/FastNodes/main/sub/countries/LU.txt",
+"https://raw.githubusercontent.com/CNT-Cafe/Public-Configs/HEAD/%E2%9C%A7%20Public%20Configs",
+"https://raw.githubusercontent.com/EEvanescence/4Diana/main/AllConfigsSub.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/10ium-telegram-configs-collector-tcp",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/034.txt",
+"https://raw.githubusercontent.com/Mokafela/Config-Finder/master/split/sub-CA.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/038.txt",
+"https://raw.githubusercontent.com/cbusifabcap/daily_free_vpn/main/sub/URI.yml",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/10ium-telegram-configs-collector-tcp",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/mix.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/000.txt",
+"https://rahi-eq3.pages.dev/api/configs?limit=all",
+"https://raw.githubusercontent.com/sakha1370/OpenRay/refs/heads/main/output/all_valid_proxies.txt",
+"https://raw.githubusercontent.com/AzadNetCH/Clash/main/AzadNet.txt#",
+"https://raw.githubusercontent.com/TheCrowCreature/v2rayExtractor/refs/heads/main/hy2.html",
+"https://vless.svinakraft.workers.dev/trojan.txt",
+"https://raw.githubusercontent.com/lagzian/SS-Collector/main/configs/subscription-all.b64",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/countries/TW.txt",
+"https://raw.githubusercontent.com/10ium/V2Hub3/refs/heads/main/Split/Normal/reality",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/005.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/10ium-V2Hub3-reality",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/flaafix-AetrisVPN-white-list-lite-AetrisVPN.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/countries/AU.txt",
+"https://raw.githubusercontent.com/mehrtat/vless-collector/HEAD/vless.txt",
+"https://raw.githubusercontent.com/cyrusalbert/ArashOnline-GO/refs/heads/main/arashonline-highspeed.txt#ArashOnline-GO-HighSpeed",
+"https://raw.githubusercontent.com/itsyebekhe/PSG/main/subscriptions/xray/mix",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/10ium-VpnClashFaCollector-iran_ping_top10.txt",
+"https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/sub/port_2083.txt",
+"https://raw.githubusercontent.com/SoliSpirit/v2ray-configs/refs/heads/main/Protocols/trojan.txt",
+"https://raw.githubusercontent.com/rekt0ro/ProxyRift/main/subscriptions/light-base64.txt",
+"https://raw.githubusercontent.com/iampedii/whitedns-sub/main/base64.txt",
+"https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/sub/port_2053.txt",
+"https://raw.githubusercontent.com/Mokafela/Config-Finder/master/split/sub-US.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/018.txt",
+"https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/refs/heads/main/Export/Base64/PROXIES_ONLY/BLACK_VLESS_RUS_base64.txt",
+"https://raw.githubusercontent.com/SoliSpirit/SolVPN/main/Countrys/Canada.txt",
+"https://raw.githubusercontent.com/idtheo/V2Ray-CleanIPs-Servers/main/star.txt",
+"https://free-sub.indevs.in/star",
+"https://raw.githubusercontent.com/lorenzazy7kenyon/free-vpn-subscriptions/main/output/by-country/v2ray-base64-US.txt",
+"https://raw.githubusercontent.com/0xRadikal/Free-v2ray-Configs/main/Countries/Germany.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/luxxuria-harvester-speed_tested.txt",
+"https://raw.githubusercontent.com/10ium/ScrapeAndCategorize/refs/heads/main/output_configs/Germany.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/patt/protocols/trojan.txt",
+"https://raw.githubusercontent.com/pie-with-jam/PulseProxy/main/githubmirror/23.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/new.txt",
+"https://raw.githubusercontent.com/Argh94/V2RayAutoConfig/refs/heads/main/configs/Namibia.txt",
+"https://raw.githubusercontent.com/6b3478/telegram-configs-collector2/main/protocols/trojan",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/countries/TR.txt",
+"https://raw.githubusercontent.com/mahdyaralipor/v2all/main/real_sub.txt",
+"https://raw.githubusercontent.com/MahanKenway/Freedom-V2Ray/HEAD/configs/mix.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/0xRadikal-Free-v2ray-top100.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/countries/SA.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/countries/SA.txt",
+"https://raw.githubusercontent.com/rtwo2/FastNodes/main/sub/verified.txt",
+"https://raw.githubusercontent.com/Surfboardv2ray/v2ray-worker-sub/refs/heads/master/providers/providers64",
+"https://raw.githubusercontent.com/MahanKenway/Freedom-V2Ray/HEAD/configs/mix_sub.txt",
+"https://raw.githubusercontent.com/ShatakVPN/ConfigForge-V2Ray/main/configs/light.txt",
+"https://raw.githubusercontent.com/TelegaVPN/free-vpn-keys/main/sub/base64/vless.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/countries/TW.txt",
+"https://raw.githubusercontent.com/penhandev/AutoAiVPN/HEAD/russia.txt",
+"https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/sub/port_80.txt",
+"https://raw.githubusercontent.com/snakem982/proxypool/main/source/v2ray-2.txt"
+"https://raw.githubusercontent.com/6b3478/telegram-configs-collector2/main/countries/ro/mixed",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/tcp-pass/batch_013.txt",
+"https://raw.githubusercontent.com/kort0881/vpn-vless-configs-russia/main/data/githubmirror/clean/trojan.txt",
+"https://raw.githubusercontent.com/morpheusadam/v2ray-config/main/subs/bundles/tls.txt",
+"https://raw.githubusercontent.com/kort0881/vpn-vless-configs-russia/main/output/vless.txt",
+"https://raw.githubusercontent.com/morpheusadam/v2ray-config/main/subs/bundles/lite.txt",
+"https://raw.githubusercontent.com/morpheusadam/v2ray-config/main/subs/bundles/best.txt",
+"https://raw.githubusercontent.com/morpheusadam/v2ray-config/main/subs/bundles/all.txt",
+"https://raw.githubusercontent.com/morpheusadam/v2ray-config/main/subs/bundles/trojan.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/protocols/trojan.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/tcp-pass/batch_014.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/009.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/tcp-pass/batch_015.txt",
+"https://raw.githubusercontent.com/Abobirec/bezdelnicha-vpn0chek/HEAD/BLACK_VLESS_RUS_mobile.txt",
+"https://raw.githubusercontent.com/rtwo2/FastNodes/main/sub/countries/MH.txt",
+"https://raw.githubusercontent.com/MahanKenway/Freedom-V2Ray/main/configs/trojan.txt",
+"https://raw.githubusercontent.com/pie-with-jam/5ubscrpt10n-Reborn/main/mini/m1n1-5ub-14.txt",
+"https://raw.githubusercontent.com/kort0881/vpn-vless-configs-russia/main/data/githubmirror/clean/vless.txt",
+"https://raw.githubusercontent.com/MahanKenway/Freedom-V2Ray/main/configs/trojan_sub.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/tcp-pass/batch_004.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/tcp-pass/batch_004.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/tcp-pass/batch_011.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/tcp-pass/batch_011.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/tcp-pass/batch_007.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/tcp-pass/batch_008.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/tcp-pass/batch_006.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/tcp-pass/batch_008.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/tcp-pass/batch_006.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/tcp-pass/batch_003.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/tcp-pass/batch_005.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/tcp-pass/batch_005.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/tcp-pass/batch_012.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/010.txt",
+"https://raw.githubusercontent.com/MahanKenway/Freedom-V2Ray/HEAD/configs/trojan.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/tcp-pass/batch_002.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/tcp-pass/batch_001.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/013.txt",
+"https://raw.githubusercontent.com/6b3478/telegram-configs-collector2/main/countries/lu/mixed",
+"https://raw.githubusercontent.com/TheCrowCreature/v2rayExtractor/refs/heads/main/trojan.html",
+"https://raw.githubusercontent.com/morpheusadam/v2ray-config/main/subs/bundles/mini.txt",
+"https://alireza786786.github.io/Free-V2ray-Configs/servers/trojan_servers.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/tcp-pass/batch_009.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/tcp-pass/batch_013.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/tcp-pass/reality.txt",
+"https://raw.githubusercontent.com/rtwo2/FastNodes/main/sub/countries/IM.txt",
+"https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/sub/trojan.txt",
+"https://raw.githubusercontent.com/morpheusadam/v2ray-config/main/subs/bundles/medium.txt",
+"https://raw.githubusercontent.com/kort0881/vpn-vless-configs-russia/main/data/githubmirror/ru-sni/vless.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/tcp-pass/batch_016.txt",
+"https://raw.githubusercontent.com/6b3478/telegram-configs-collector2/main/countries/kz/mixed",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/non-tls.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/datacenters/cloudflare.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/xhttp.txt",
+"https://raw.githubusercontent.com/thealiiakbarii-ai/VCC/main/configs/all.txt",
+"https://raw.githubusercontent.com/thealiiakbarii-ai/VCC/main/configs/vless.txt",
+"https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/detailed/trojan/443.txt",
+"https://raw.githubusercontent.com/penhandev/AutoAiVPN/HEAD/allConfigs.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/non-tls.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/countries/US.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/tcp-pass/batch_010.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/xhttp.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/030.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/tls.txt",
+"https://gh-proxy.com/https://raw.githubusercontent.com/zueston/proxy-hub/main/out/base64.txt",
+"https://ghproxy.net/https://raw.githubusercontent.com/zueston/proxy-hub/main/out/base64.txt",
+"https://gcore.jsdelivr.net/gh/zueston/proxy-hub@main/out/base64.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/10ium-telegram-configs-collector-tls",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/tls.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/10ium-telegram-configs-collector-tls",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/020.txt",
+"https://raw.githubusercontent.com/aydinverse/my-sub/HEAD/sub.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/datacenters/cloudflare.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/ipv4.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/10ium-telegram-configs-collector-ws",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/ipv4.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/ws.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/ws.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/countries/US.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/10ium-telegram-configs-collector-ws",
+"https://raw.githubusercontent.com/Leon406/SubCrawler/master/sub/share/vless",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/10ium-telegram-configs-collector-trojan",
+"https://raw.githubusercontent.com/MohammadBahemmat/V2ray-Collector/main/servers/trojan_servers.txt",
+"https://raw.githubusercontent.com/Danialsamadi/v2go/main/Splitted-By-Protocol/trojan.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/10ium-telegram-configs-collector-vless",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/10ium-telegram-configs-collector-vless",
+"https://raw.githubusercontent.com/LeilaoMi/AutoMergePublicNodes-Optimized/main/output/global.txt",
+"https://raw.githubusercontent.com/R3ZARAHIMI/tg-v2ray-configs-every2h/main/conf-week.txt",
+"https://raw.githubusercontent.com/EEvanescence/4Diana/main/By-protocol/cloudflare.txt",
+"https://raw.githubusercontent.com/kort0881/vpn-vless-configs-russia/main/data/githubmirror/clean/ss.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/protocols/vless.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/037.txt",
+"https://raw.githubusercontent.com/chenzhihan1751-cyber/node-sub-zixf/HEAD/sub/base64.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/protocols/vless.txt",
+"https://raw.githubusercontent.com/Freedom-Guard-Builder/Freedom-Finder/main/out/channels/PSG.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/tcp-pass/batch_012.txt",
+"https://raw.githubusercontent.com/morpheusadam/v2ray-config/main/subs/bundles/iran.txt",
+"https://raw.githubusercontent.com/pie-with-jam/5ubscrpt10n-Reborn/main/mini/m1n1-5ub-13.txt",
+"https://raw.githubusercontent.com/MahanKenway/Freedom-V2Ray/HEAD/configs/trojan_sub.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/025.txt",
+"https://raw.githubusercontent.com/6b3478/telegram-configs-collector2/main/countries/na/mixed",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/countries/NL.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/10ium-V2Hub3-trojan",
+"https://raw.githubusercontent.com/SoliSpirit/SolVPN/main/all_configs.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/023.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/countries/us.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/countries/us.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/countries/NL.txt",
+"https://raw.githubusercontent.com/Mokafela/Config-Finder/master/split/sub-ALL.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/10ium-telegram-configs-collector-trojan",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/SoliSpirit-v2ray-configs-trojan.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/002.txt",
+"https://raw.githubusercontent.com/myominn062-svg/mk-studio-vpn-service/main/trojan_configs.txt",
+"https://raw.githubusercontent.com/pie-with-jam/PulseProxy/main/githubmirror/30.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/countries/DE.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/tcp-pass/batch_003.txt",
+"https://raw.githubusercontent.com/YawStar/Proxy-Hunter/refs/heads/main/configs/proxy_configs_deduplicated.txt",
+"https://raw.githubusercontent.com/MrTelepathic/v2ray-sub/refs/heads/main/configs.txt",
+"https://raw.githubusercontent.com/pog7x/vpn-configs/refs/heads/master/githubmirror/10.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/024.txt",
+"https://raw.githubusercontent.com/morpheusadam/v2ray-config/main/subs/bundles/shadowsocks.txt",
+"https://raw.githubusercontent.com/sakha1370/OpenRay/main/output/kind/trojan.txt",
+"https://raw.githubusercontent.com/chenzhihan1751-cyber/node-sub-zixf/main/sub/v2ray.txt",
+"https://raw.githubusercontent.com/Argh94/V2RayAutoConfig/refs/heads/main/configs/CentralAfricanRepublic.txt",
+"https://raw.githubusercontent.com/cyrusalbert/ArashOnline-Public/main/arashonline.txt#ArashOnline-Public",
+"https://raw.githubusercontent.com/miraali1372/mirsub/main/subscription.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/019.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/10ium-VpnClashFaCollector-trojan.txt",
+"https://raw.githubusercontent.com/drmikecrypto/PulseConfigs/main/verified/configs_base64.txt",
+"https://raw.githubusercontent.com/Surfboardv2ray/v2ray-worker-sub/refs/heads/master/providers/providers",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/tcp-pass/batch_007.txt",
+"https://raw.githubusercontent.com/thealiiakbarii-ai/VCC/main/configs/lite.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/tcp-pass/batch_009.txt",
+"https://raw.githubusercontent.com/kort0881/vpn-vless-configs-russia/main/data/githubmirror/clean/hysteria2.txt",
+"https://raw.githubusercontent.com/6b3478/telegram-configs-collector2/main/subscribe/protocols/trojan",
+"https://raw.githubusercontent.com/MahanKenway/Freedom-V2Ray/main/configs/vless_sub.txt",
+"https://raw.githubusercontent.com/MahanKenway/Freedom-V2Ray/HEAD/configs/vless.txt",
+"https://raw.githubusercontent.com/ninjastrikers/Nexus-nodes/main/configs/all.txt",
+"https://raw.githubusercontent.com/drmikecrypto/PulseConfigs/HEAD/verified/configs_base64.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/017.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/datacenters/fastly.txt",
+"https://raw.githubusercontent.com/rtwo2/FastNodes/main/sub/countries/MT.txt",
+"https://raw.githubusercontent.com/Danialsamadi/v2go/main/Sub1.txt",
+"https://raw.githubusercontent.com/aqayerez/MatnOfficial-VPN/refs/heads/main/MatnOfficial",
+"https://raw.githubusercontent.com/aqayerez/MatnOfficial-VPN/refs/heads/main/MatnOfficial#MatnOfficial",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/tcp-pass/batch_002.txt",
+"https://raw.githubusercontent.com/lorenzazy7kenyon/free-vpn-subscriptions/main/output/v2ray-base64.txt",
+"https://raw.githubusercontent.com/6b3478/telegram-configs-collector2/main/countries/lt/mixed",
+"https://raw.githubusercontent.com/drmikecrypto/PulseConfigs/HEAD/verified/configs.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/main/config/tcp-pass/batch_001.txt",
+"https://raw.githubusercontent.com/6b3478/telegram-configs-collector2/main/countries/ph/mixed",
+"https://raw.githubusercontent.com/3inker/v2ray-subscription/main/subs/all_not_ru.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/10ium-V2Hub3-vless",
+"https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/detailed/vless/80.txt",
+"https://raw.githubusercontent.com/kort0881/vpn-checker-backend/main/checked/RU_Best/ru_white_part3.txt",
+"https://raw.githubusercontent.com/rtwo2/FastNodes/main/sub/countries/EE.txt",
+"https://vless.svinakraft.workers.dev/vless.txt",
+"https://raw.githubusercontent.com/mrdevmohamed/v2ray-configs/main/All_Configs_base64_Sub.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/0xRadikal-Free-v2ray-secure.txt",
+"https://gh-proxy.com/https://raw.githubusercontent.com/chenzhihan1751-cyber/node-sub-zixf/main/sub/base64.txt",
+"https://raw.githubusercontent.com/6b3478/telegram-configs-collector2/main/countries/si/mixed",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/roosterkid-openproxylist-V2RAY_RAW.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/003.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/0xRadikal-Free-v2ray-secure.txt",
+"https://raw.githubusercontent.com/ZendanTeam/SS44-sub/main/SS44.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/countries/SC.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/countries/SC.txt",
+"https://raw.githubusercontent.com/ninjastrikers/Nexus-nodes/main/configs/vless.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/split/datacenters/fastly.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/022.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/007.txt",
+"https://raw.githubusercontent.com/chenzhihan1751-cyber/node-sub-zixf/main/sub/base64.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/base64/split/tcp.txt",
+"https://raw.githubusercontent.com/arg9244/V2R-Subs/HEAD/subs/1000/027.txt",
+"https://raw.githubusercontent.com/pie-with-jam/5ubscrpt10n-Reborn/main/mini/m1n1-5ub-11.txt",
+"https://raw.githubusercontent.com/Delta-Kronecker/V2ray-Config/refs/heads/main/config/tcp-pass/batch_014.txt",
+"https://vless.svinakraft.workers.dev/fastest.txt",
+"https://raw.githubusercontent.com/pie-with-jam/PulseProxy/main/githubmirror/13.txt",
+"https://raw.githubusercontent.com/svinakraft-maker/FlareFeed/main/public/fastest.txt",
+"https://raw.githubusercontent.com/gbcwror/v2ray-tester/HEAD/configs/vless/vless-1.txt",
+"https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/flaafix-AetrisVPN-black-list-configs.txt",
+    "https://github.com/miladtahanian/Config-Collector/raw/refs/heads/main/mixed_iran.txt",
+    "https://github.com/10Dream/sub-mod/raw/refs/heads/main/sub/normal/0xRadikal-Free-v2ray-fast.txt",
+    "https://github.com/0xRadikal/Free-v2ray-Configs/raw/refs/heads/main/all/configs.txt",
+    "https://github.com/MatinGhanbari/v2ray-configs/raw/refs/heads/main/subscriptions/v2ray/all_sub.txt",
+"https://github.com/Alirewa/V2ray-Configs/raw/refs/heads/main/config.txt",
+    "https://raw.githubusercontent.com/ashah404/V2rayCollector/refs/heads/main/subscribe/layers/ipv4",
+    "https://github.com/0xRadikal/Free-v2ray-Configs/raw/refs/heads/main/all/configs.txt",
+    "https://github.com/barry-far/V2ray-Config/raw/refs/heads/main/All_Configs_Sub.txt",
+    "https://github.com/MatinGhanbari/v2ray-configs/raw/refs/heads/main/subscriptions/v2ray/all_sub.txt",
+    "https://github.com/morpheusadam/v2ray-config/raw/refs/heads/main/subs/bundles/all.txt",
 
-# A config passes when at least one independent endpoint returns its expected response.
-TESTS = [
-    ("google", "https://www.google.com/generate_204", "204"),
-    ("cloudflare", "https://cp.cloudflare.com/generate_204", "204"),
-    ("apple", "http://captive.apple.com/hotspot-detect.html", "apple"),
-]
+TARGET_IP = "104.18.37.127"
+ALLOWED_PROTOCOLS = ["vless", "vmess", "trojan"]
+ALLOWED_PORT = 443
+ALLOWED_TRANSPORT = "xhttp"
+FORCED_MODE = "packet-up"   # ✅ الوضع اللي بغينا نفرضوه
 
-print_lock = threading.Lock()
-
-
-def log(message):
-    with print_lock:
-        print(message, flush=True)
-
-
-def fetch_source():
-    """Download the input list from the configured raw GitHub URL."""
-    response = requests.get(
-        SOURCE_URL,
-        headers={"User-Agent": "Mozilla/5.0 XHTTP-Checker/1.0"},
-        timeout=(15, 60)
-    )
-    response.raise_for_status()
-    if not response.text.strip():
-        raise RuntimeError("The source file is empty.")
-    return response.text.splitlines()
-
-
-def b64decode_text(value):
-    value = value.strip().replace("-", "+").replace("_", "/")
-    value += "=" * ((4 - len(value) % 4) % 4)
-    return base64.b64decode(value).decode("utf-8", errors="strict")
-
-
-def first(query, key, default=""):
-    values = query.get(key)
-    return values[0] if values else default
-
-
-def parse_link(link):
-    """Convert a VLESS/VMess/Trojan share link into an Xray outbound."""
-    scheme = link.split("://", 1)[0].lower()
-
-    if scheme == "vmess":
-        payload = link.split("://", 1)[1].split("#", 1)[0]
-        obj = json.loads(b64decode_text(payload))
-        address = str(obj.get("add", "")).strip()
-        port = int(obj.get("port", 0))
-        network = str(obj.get("net", obj.get("network", ""))).lower()
-        tls_value = str(obj.get("tls", obj.get("security", ""))).lower()
-        if not address or port != 443 or network != "xhttp" or tls_value not in ("tls", "true", "1"):
-            return None, "filtered"
-        user_id = str(obj.get("id", "")).strip()
-        if not user_id:
-            return None, "missing_id"
-
-        # Some earlier collectors incorrectly stored packet-up in `type`.
-        # Treat it as XHTTP mode only when it is a recognized mode value.
-        mode = str(obj.get("mode", "")).strip()
-        old_type = str(obj.get("type", "")).strip()
-        if not mode and old_type in ("auto", "packet-up", "stream-up", "stream-one"):
-            mode = old_type
-        mode = mode or "packet-up"
-
-        outbound = {
-            "protocol": "vmess",
-            "settings": {
-                "vnext": [{
-                    "address": address,
-                    "port": port,
-                    "users": [{
-                        "id": user_id,
-                        "alterId": int(obj.get("aid", 0) or 0),
-                        "security": str(obj.get("scy", "auto") or "auto")
-                    }]
-                }]
-            },
-            "streamSettings": build_stream(
-                sni=str(obj.get("sni") or address),
-                host=str(obj.get("host") or address),
-                path=str(obj.get("path") or "/"),
-                mode=mode,
-                fingerprint=str(obj.get("fp") or ""),
-                alpn=str(obj.get("alpn") or "")
-            )
-        }
-        return outbound, None
-
-    if scheme not in ("vless", "trojan"):
-        return None, "unsupported_protocol"
-
-    parsed = urllib.parse.urlsplit(link)
-    query = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
-    address = parsed.hostname or ""
-    port = parsed.port or 0
-    network = first(query, "type", first(query, "network")).lower()
-    security = first(query, "security").lower()
-
-    if port != 443 or network != "xhttp" or security != "tls":
-        return None, "filtered"
-    if not address:
-        return None, "missing_address"
-
-    sni = first(query, "sni", address)
-    host = first(query, "host", address)
-    path = first(query, "path", parsed.path or "/")
-    mode = first(query, "mode", "packet-up")
-    fingerprint = first(query, "fp")
-    alpn = first(query, "alpn")
-
-    stream = build_stream(sni, host, path, mode, fingerprint, alpn)
-
-    if scheme == "vless":
-        user_id = urllib.parse.unquote(parsed.username or "")
-        if not user_id:
-            return None, "missing_id"
-        settings = {"vnext": [{
-            "address": address,
-            "port": port,
-            "users": [{"id": user_id, "encryption": first(query, "encryption", "none")}]
-        }]}
-        flow = first(query, "flow")
-        if flow:
-            settings["vnext"][0]["users"][0]["flow"] = flow
-        return {"protocol": "vless", "settings": settings, "streamSettings": stream}, None
-
-    password = urllib.parse.unquote(parsed.username or "")
-    if not password:
-        return None, "missing_password"
-    return {
-        "protocol": "trojan",
-        "settings": {"servers": [{"address": address, "port": port, "password": password}]},
-        "streamSettings": stream
-    }, None
-
-
-def build_stream(sni, host, path, mode, fingerprint, alpn):
-    tls = {"serverName": sni}
-    if fingerprint:
-        tls["fingerprint"] = fingerprint
-    if alpn:
-        tls["alpn"] = [x.strip() for x in alpn.split(",") if x.strip()]
-
-    xhttp = {"path": path or "/", "mode": mode or "packet-up"}
-    if host:
-        xhttp["host"] = host
-
-    return {
-        "method": "xhttp",
-        "xhttpSettings": xhttp,
-        "security": "tls",
-        "tlsSettings": tls
-    }
-
-
-def make_config(outbound, socks_port):
-    return {
-        "log": {"loglevel": "warning"},
-        "inbounds": [{
-            "tag": "socks-in",
-            "listen": "127.0.0.1",
-            "port": socks_port,
-            "protocol": "socks",
-            "settings": {"auth": "noauth", "udp": False}
-        }],
-        "outbounds": [
-            dict(outbound, tag="proxy"),
-            {"tag": "direct", "protocol": "freedom"},
-            {"tag": "block", "protocol": "blackhole"}
-        ],
-        "routing": {
-            "domainStrategy": "AsIs",
-            "rules": [{"type": "field", "inboundTag": ["socks-in"], "outboundTag": "proxy"}]
-        }
-    }
-
-
-def port_ready(port, process, wait_seconds=8):
-    deadline = time.monotonic() + wait_seconds
-    while time.monotonic() < deadline:
-        if process.poll() is not None:
-            return False
-        try:
-            with socket.create_connection(("127.0.0.1", port), timeout=0.25):
-                return True
-        except OSError:
-            time.sleep(0.1)
-    return False
-
-
-def endpoint_ok(name, response, expected):
-    if expected == "204":
-        return response.status_code == 204
-    if expected == "apple":
-        return response.status_code == 200 and "success" in response.text.lower()
-    return False
-
-
-def test_one(index, link):
+# ================== دوال مساعدة للتشفير ==================
+def b64_decode(s):
+    s = s.strip().replace('-', '+').replace('_', '/')
+    s += '=' * ((4 - len(s) % 4) % 4)
     try:
-        outbound, reason = parse_link(link)
-        if reason:
-            return {"index": index, "link": link, "status": "SKIPPED", "reason": reason,
-                    "delay_ms": "", "google": "", "cloudflare": "", "apple": ""}
+        return base64.b64decode(s).decode('utf-8', errors='ignore')
+    except Exception:
+        return ""
 
-        socks_port = BASE_SOCKS_PORT + index
-        with tempfile.TemporaryDirectory(prefix="xray-check-") as temp_dir:
-            config_path = Path(temp_dir) / "config.json"
-            config_path.write_text(
-                json.dumps(make_config(outbound, socks_port), ensure_ascii=False),
-                encoding="utf-8"
-            )
+def b64_encode(s):
+    return base64.b64encode(s.encode('utf-8')).decode('utf-8')
 
-            process = subprocess.Popen(
-                [XRAY_BIN, "run", "-c", str(config_path)],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
-            )
-            try:
-                if not port_ready(socks_port, process):
-                    return {"index": index, "link": link, "status": "FAILED",
-                            "reason": "xray_start_or_proxy_failed", "delay_ms": "",
-                            "google": "", "cloudflare": "", "apple": ""}
+def fetch_url(url):
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=15) as response:
+            return response.read().decode('utf-8', errors='ignore')
+    except Exception as e:
+        print(f"Error fetching {url}: {e}")
+        return ""
 
-                proxy = f"socks5h://127.0.0.1:{socks_port}"
-                session = requests.Session()
-                session.trust_env = False
-                session.proxies = {"http": proxy, "https": proxy}
-                timings = {}
-                checks = {}
+# ================== دوال المعالجة ==================
+def process_vless_trojan(link):
+    try:
+        parsed = urllib.parse.urlparse(link)
 
-                for name, url, expected in TESTS:
-                    started = time.perf_counter()
-                    try:
-                        response = session.get(
-                            url,
-                            timeout=(8, 10),
-                            allow_redirects=False,
-                            headers={"User-Agent": "Mozilla/5.0 XHTTP-Checker/1.0"}
-                        )
-                        elapsed = round((time.perf_counter() - started) * 1000, 1)
-                        ok = endpoint_ok(name, response, expected)
-                        checks[name] = "OK" if ok else f"HTTP_{response.status_code}"
-                        if ok:
-                            timings[name] = elapsed
-                    except requests.RequestException as exc:
-                        checks[name] = type(exc).__name__
+        port = parsed.port or 443
+        if port != ALLOWED_PORT:
+            return None
 
-                if timings:
-                    # Median across successful endpoints; robust against one unusually fast result.
-                    sorted_times = sorted(timings.values())
-                    delay = sorted_times[len(sorted_times) // 2]
-                    return {
-                        "index": index, "link": link, "status": "WORKING",
-                        "reason": f"{len(timings)}/3 endpoints passed",
-                        "delay_ms": delay,
-                        "google": checks.get("google", ""),
-                        "cloudflare": checks.get("cloudflare", ""),
-                        "apple": checks.get("apple", "")
-                    }
+        query_dict = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
 
-                return {
-                    "index": index, "link": link, "status": "FAILED",
-                    "reason": "no_test_endpoint_passed",
-                    "delay_ms": "",
-                    "google": checks.get("google", ""),
-                    "cloudflare": checks.get("cloudflare", ""),
-                    "apple": checks.get("apple", "")
-                }
-            finally:
-                process.terminate()
-                try:
-                    process.wait(timeout=2)
-                except subprocess.TimeoutExpired:
-                    process.kill()
-                    process.wait(timeout=2)
+        security = query_dict.get('security', [''])[0].lower()
+        if security != 'tls':
+            return None
 
-    except Exception as exc:
-        return {"index": index, "link": link, "status": "FAILED",
-                "reason": f"parse_or_runtime_error:{type(exc).__name__}",
-                "delay_ms": "", "google": "", "cloudflare": "", "apple": ""}
+        net_type = query_dict.get('type', query_dict.get('network', ['']))[0].lower()
+        if net_type != ALLOWED_TRANSPORT:
+            return None
 
+        # ✅ فرض وضع packet-up
+        query_dict['mode'] = [FORCED_MODE]
 
+        original_host = parsed.hostname
+        if not original_host:
+            return None
+
+        if 'sni' not in query_dict:
+            query_dict['sni'] = [original_host]
+        if 'host' not in query_dict:
+            query_dict['host'] = [original_host]
+
+        userinfo = ""
+        if '@' in parsed.netloc:
+            userinfo = parsed.netloc.split('@')[0] + "@"
+
+        new_netloc = f"{userinfo}{TARGET_IP}:{port}"
+        new_query = urllib.parse.urlencode(query_dict, doseq=True)
+
+        new_link = urllib.parse.urlunparse((
+            parsed.scheme,
+            new_netloc,
+            parsed.path,
+            parsed.params,
+            new_query,
+            parsed.fragment
+        ))
+        return new_link
+    except Exception as e:
+        print(f"Error processing VLESS/Trojan {link[:30]}: {e}")
+        return None
+
+def process_vmess(link):
+    try:
+        parts = link.split('#', 1)
+        b64_part = parts[0].replace("vmess://", "").strip()
+        fragment = f"#{parts[1]}" if len(parts) > 1 else ""
+
+        decoded = b64_decode(b64_part)
+        if not decoded:
+            return None
+
+        obj = json.loads(decoded)
+
+        if int(obj.get("port", 0)) != ALLOWED_PORT:
+            return None
+
+        tls_value = obj.get("tls") or obj.get("security") or ""
+        if tls_value.lower() != "tls":
+            return None
+
+        net_value = obj.get("net") or obj.get("network") or ""
+        if net_value.lower() != ALLOWED_TRANSPORT:
+            return None
+
+        # ✅ فرض وضع packet-up (v2rayN كيستعمل type باش يخزن mode فـ xhttp)
+        obj["type"] = FORCED_MODE
+
+        original_add = obj.get("add")
+        if not original_add:
+            return None
+
+        if not obj.get("host"):
+            obj["host"] = original_add
+        if not obj.get("sni"):
+            obj["sni"] = original_add
+
+        obj["add"] = TARGET_IP
+
+        new_json = json.dumps(obj, separators=(',', ':'))
+        new_b64 = b64_encode(new_json)
+
+        return f"vmess://{new_b64}{fragment}"
+    except Exception as e:
+        print(f"Error processing VMess: {e}")
+        return None
+
+# ================== السكريبت الرئيسي ==================
 def main():
-    if not Path(XRAY_BIN).exists():
-        raise SystemExit(f"Xray binary not found: {XRAY_BIN}")
-    log(f"[SOURCE] Downloading configs from: {SOURCE_URL}")
-    try:
-        raw_lines = fetch_source()
-    except Exception as exc:
-        raise SystemExit(f"Could not download source configs: {exc}")
-    seen = set()
-    links = []
-    for line in raw_lines:
-        line = line.strip()
-        if not line or line.startswith("#") or "://" not in line:
+    all_links = []
+    for url in SOURCES:
+        content = fetch_url(url)
+        if content:
+            all_links.extend(content.splitlines())
+
+    valid_configs = set()
+
+    for link in all_links:
+        link = link.strip()
+        if not link:
             continue
-        if line not in seen:
-            seen.add(line)
-            links.append(line)
 
-    log(f"[START] Unique downloaded links: {len(links)} | workers: {WORKERS}")
+        protocol_match = re.match(r'^(vless|vmess|trojan)://', link, re.IGNORECASE)
+        if not protocol_match:
+            continue
+        protocol = protocol_match.group(1).lower()
 
-    results = []
-    with ThreadPoolExecutor(max_workers=WORKERS) as pool:
-        futures = {pool.submit(test_one, i, link): (i, link) for i, link in enumerate(links)}
-        for done, future in enumerate(as_completed(futures), 1):
-            result = future.result()
-            results.append(result)
-            log(f"[{done}/{len(links)}] {result['status']} | {result['reason']}")
+        if protocol == "vmess":
+            processed = process_vmess(link)
+            if processed:
+                valid_configs.add(processed)
+        elif protocol in ["vless", "trojan"]:
+            processed = process_vless_trojan(link)
+            if processed:
+                valid_configs.add(processed)
 
-    results.sort(key=lambda x: x["index"])
-    working = [r for r in results if r["status"] == "WORKING"]
-    failed = [r for r in results if r["status"] == "FAILED"]
+    output_file = "reality_configs.txt"
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.write("\n".join(valid_configs))
 
-    Path("working_configs.txt").write_text(
-        "\n".join(r["link"] for r in sorted(working, key=lambda x: float(x["delay_ms"]))) +
-        ("\n" if working else ""),
-        encoding="utf-8"
-    )
-    Path("failed_configs.txt").write_text(
-        "\n".join(r["link"] for r in failed) + ("\n" if failed else ""),
-        encoding="utf-8"
-    )
-
-    with open("results.csv", "w", newline="", encoding="utf-8") as f:
-        fields = ["index", "status", "reason", "delay_ms", "google", "cloudflare", "apple", "link"]
-        writer = csv.DictWriter(f, fieldnames=fields)
-        writer.writeheader()
-        for result in results:
-            writer.writerow({key: result.get(key, "") for key in fields})
-
-    log(f"[DONE] Working: {len(working)} | Failed: {len(failed)} | Skipped: {sum(r['status']=='SKIPPED' for r in results)}")
-
+    print(f"✅ تم استخراج {len(valid_configs)} كونفيغ XHTTP+TLS (mode=packet-up) بدون تكرار وحفظهم فـ {output_file}")
 
 if __name__ == "__main__":
     main()
