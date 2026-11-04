@@ -6,6 +6,10 @@ import urllib.parse
 
 # ================== الإعدادات ==================
 SOURCES = [
+    "https://github.com/0xRadikal/Free-v2ray-Configs/raw/refs/heads/main/all/configs.txt",
+    "https://github.com/MatinGhanbari/v2ray-configs/raw/refs/heads/main/subscriptions/v2ray/all_sub.txt",
+    "https://github.com/Alirewa/V2ray-Configs/raw/refs/heads/main/config.txt",
+    
     "https://raw.githubusercontent.com/ashah404/V2rayCollector/refs/heads/main/subscribe/layers/ipv4",
     "https://github.com/0xRadikal/Free-v2ray-Configs/raw/refs/heads/main/all/configs.txt",
     "https://github.com/barry-far/V2ray-Config/raw/refs/heads/main/All_Configs_Sub.txt",
