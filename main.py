@@ -187,7 +187,7 @@ SOURCES = [
 "https://raw.githubusercontent.com/gbcwror/v2ray-tester/HEAD/configs/vless/vless-1.txt",
 "https://raw.githubusercontent.com/10Dream/sub-mod/main/sub/normal/flaafix-AetrisVPN-black-list-configs.txt",
     "https://github.com/miladtahanian/Config-Collector/raw/refs/heads/main/mixed_iran.txt",
-    "https://github.com/10Dream/sub-mod/raw/refs/heads/main/sub/normal/0xRadikal-Free-v2ray-fast.txt"ة
+    "https://github.com/10Dream/sub-mod/raw/refs/heads/main/sub/normal/0xRadikal-Free-v2ray-fast.txt",
     
     "https://github.com/0xRadikal/Free-v2ray-Configs/raw/refs/heads/main/all/configs.txt",
     "https://github.com/MatinGhanbari/v2ray-configs/raw/refs/heads/main/subscriptions/v2ray/all_sub.txt",
