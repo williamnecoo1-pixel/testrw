@@ -14,10 +14,23 @@ SOURCES = [
 
 TARGET_IP = "104.18.37.127"
 ALLOWED_PROTOCOLS = ["vless", "vmess", "trojan"]
-ALLOWED_PORT = "443"
+ALLOWED_PORT = 443
 ALLOWED_TRANSPORT = "xhttp"
 
-# ================== دوال مساعدة ==================
+# ================== دوال مساعدة للتشفير ==================
+def b64_decode(s):
+    """فك تشفير Base64 مع دعم Base64URL والـ Padding"""
+    s = s.strip().replace('-', '+').replace('_', '/')
+    s += '=' * ((4 - len(s) % 4) % 4)
+    try:
+        return base64.b64decode(s).decode('utf-8', errors='ignore')
+    except Exception:
+        return ""
+
+def b64_encode(s):
+    """تشفير Base64 عادي"""
+    return base64.b64encode(s.encode('utf-8')).decode('utf-8')
+
 def fetch_url(url):
     try:
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -27,38 +40,109 @@ def fetch_url(url):
         print(f"Error fetching {url}: {e}")
         return ""
 
-def is_xhttp(link):
-    return bool(re.search(r'[?&](type|network)=xhttp', link, re.IGNORECASE)) or 'xhttp' in link.lower()
+# ================== دوال المعالجة ==================
+def process_vless_trojan(link):
+    try:
+        parsed = urllib.parse.urlparse(link)
+        
+        # 1. التحقق من البورت
+        port = parsed.port or 443
+        if port != ALLOWED_PORT:
+            return None
+            
+        # 2. التحقق من الإعدادات (TLS و XHTTP)
+        query_dict = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
+        
+        security = query_dict.get('security', [''])[0].lower()
+        if security != 'tls':
+            return None
+            
+        net_type = query_dict.get('type', query_dict.get('network', ['']))[0].lower()
+        if net_type != ALLOWED_TRANSPORT:
+            return None
 
-def is_tls(link):
-    return bool(re.search(r'[?&](security=tls|tls=1|tls=true)', link, re.IGNORECASE))
+        original_host = parsed.hostname
+        if not original_host:
+            return None
 
-def replace_vless_trojan_ip(link):
-    # كيبدل الـ IP أو الدومين اللي مورا @ ويخلي البورت
-    # مثال: vless://uuid@1.1.1.1:443?... كيولي vless://uuid@104.18.37.127:443?...
-    return re.sub(r'@[^:/?#]+(:[0-9]+)?', f'@{TARGET_IP}\\1', link)
+        # 3. الحفاظ على الـ SNI و Host الأصليين قبل تغيير الدومين
+        if 'sni' not in query_dict:
+            query_dict['sni'] = [original_host]
+        if 'host' not in query_dict:
+            query_dict['host'] = [original_host]
+
+        # 4. إعادة بناء الرابط بأمان (تجنب مشكل UserInfo)
+        # نقسمو الـ netloc باش نعزلوا الـ UserInfo
+        userinfo = ""
+        if '@' in parsed.netloc:
+            userinfo = parsed.netloc.split('@')[0] + "@"
+            
+        new_netloc = f"{userinfo}{TARGET_IP}:{port}"
+        
+        # إعادة بناء الـ Query String مع الحفاظ على كاع البارامترات
+        new_query = urllib.parse.urlencode(query_dict, doseq=True)
+        
+        # تجميع الرابط النهائي
+        new_link = urllib.parse.urlunparse((
+            parsed.scheme,
+            new_netloc,
+            parsed.path,
+            parsed.params,
+            new_query,
+            parsed.fragment
+        ))
+        return new_link
+    except Exception as e:
+        print(f"Error processing VLESS/Trojan {link[:30]}: {e}")
+        return None
 
 def process_vmess(link):
     try:
-        b64 = link.replace("vmess://", "").strip()
-        # تصحيح base64 إلا كان ناقص
-        b64 += "=" * ((4 - len(b64) % 4) % 4)
-        decoded = base64.b64decode(b64).decode('utf-8')
+        # فصل الـ Fragment (الاسم) باش ما يخربش الـ Base64
+        parts = link.split('#', 1)
+        b64_part = parts[0].replace("vmess://", "").strip()
+        fragment = f"#{parts[1]}" if len(parts) > 1 else ""
+        
+        decoded = b64_decode(b64_part)
+        if not decoded:
+            return None
+            
         obj = json.loads(decoded)
         
-        # الفلترة
-        if str(obj.get("port")) != ALLOWED_PORT: return None
-        if obj.get("tls") != "tls" and obj.get("security") != "tls": return None
-        if obj.get("net") != ALLOWED_TRANSPORT and obj.get("network") != ALLOWED_TRANSPORT: return None
-        
-        # تبديل الـ IP
+        # 1. التحقق من البورت
+        if int(obj.get("port", 0)) != ALLOWED_PORT:
+            return None
+            
+        # 2. التحقق من TLS
+        tls_value = obj.get("tls") or obj.get("security") or ""
+        if tls_value.lower() != "tls":
+            return None
+            
+        # 3. التحقق من XHTTP
+        net_value = obj.get("net") or obj.get("network") or ""
+        if net_value.lower() != ALLOWED_TRANSPORT:
+            return None
+
+        original_add = obj.get("add")
+        if not original_add:
+            return None
+
+        # 4. حفظ SNI و Host الأصليين إذا لم يكونا موجودين
+        if not obj.get("host"):
+            obj["host"] = original_add
+        if not obj.get("sni"):
+            obj["sni"] = original_add
+
+        # 5. تغيير العنوان إلى IP الجديد
         obj["add"] = TARGET_IP
-        
-        # إعادة التشفير
+
+        # إعادة التشفير بدون مسافات زائدة
         new_json = json.dumps(obj, separators=(',', ':'))
-        new_b64 = base64.b64encode(new_json.encode('utf-8')).decode('utf-8')
-        return f"vmess://{new_b64}"
-    except Exception:
+        new_b64 = b64_encode(new_json)
+        
+        return f"vmess://{new_b64}{fragment}"
+    except Exception as e:
+        print(f"Error processing VMess: {e}")
         return None
 
 # ================== السكريبت الرئيسي ==================
@@ -73,34 +157,29 @@ def main():
 
     for link in all_links:
         link = link.strip()
-        if not link: continue
+        if not link:
+            continue
 
-        # 1. التحقق من البروتوكول
         protocol_match = re.match(r'^(vless|vmess|trojan)://', link, re.IGNORECASE)
-        if not protocol_match: continue
+        if not protocol_match:
+            continue
         protocol = protocol_match.group(1).lower()
 
         if protocol == "vmess":
             processed = process_vmess(link)
             if processed:
                 valid_configs.add(processed)
-                
         elif protocol in ["vless", "trojan"]:
-            # 2. التحقق من البورت، TLS، و XHTTP
-            if f":{ALLOWED_PORT}" not in link: continue
-            if not is_tls(link): continue
-            if not is_xhttp(link): continue
+            processed = process_vless_trojan(link)
+            if processed:
+                valid_configs.add(processed)
 
-            # 3. تبديل الـ IP
-            processed = replace_vless_trojan_ip(link)
-            valid_configs.add(processed)
-
-    # حفظ النتيجة فـ الملف
+    # حفظ النتيجة
     output_file = "reality_configs.txt"
     with open(output_file, "w", encoding="utf-8") as f:
         f.write("\n".join(valid_configs))
-        
-    print(f"✅ تم استخراج {len(valid_configs)} كونفيغ بدون تكرار وحفظهم فـ {output_file}")
+
+    print(f"✅ تم استخراج {len(valid_configs)} كونفيغ XHTTP+TLS بدون تكرار وحفظهم فـ {output_file}")
 
 if __name__ == "__main__":
     main()
