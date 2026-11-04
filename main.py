@@ -963,6 +963,7 @@ SOURCES = [
     "https://github.com/barry-far/V2ray-Config/raw/refs/heads/main/All_Configs_Sub.txt",
     "https://github.com/MatinGhanbari/v2ray-configs/raw/refs/heads/main/subscriptions/v2ray/all_sub.txt",
     "https://github.com/morpheusadam/v2ray-config/raw/refs/heads/main/subs/bundles/all.txt",
+    ]
 
 TARGET_IP = "104.18.37.127"
 ALLOWED_PROTOCOLS = ["vless", "vmess", "trojan"]
