@@ -6,8 +6,8 @@ import urllib.parse
 
 # ================== الإعدادات ==================
 SOURCES = [
-
-    "https://translate.yandex.ru/translate?url=https://bitbucket.org/igareck/vpn-configs-for-russia/raw/main/Export/v2rayN_PC/BLACK_VLESS_RUS_mobile_v2rayN.txt&lang=de-de",
+"https://github.com/williamnecoo1-pixel/-testeur-X/raw/refs/heads/main/working.txt",
+"https://translate.yandex.ru/translate?url=https://bitbucket.org/igareck/vpn-configs-for-russia/raw/main/Export/v2rayN_PC/BLACK_VLESS_RUS_mobile_v2rayN.txt&lang=de-de",
 "https://raw.githubusercontent.com/drmikecrypto/PulseConfigs/HEAD/secure/configs.txt",
 "https://raw.githubusercontent.com/sakha1370/OpenRay/main/output_iran/iran_top100.txt",
 "https://vpnkeys.me/api/v1/keys",
@@ -965,7 +965,6 @@ SOURCES = [
     "https://github.com/morpheusadam/v2ray-config/raw/refs/heads/main/subs/bundles/all.txt",
     ]
 
-TARGET_IP = "104.18.37.127"
 ALLOWED_PROTOCOLS = ["vless", "vmess", "trojan"]
 ALLOWED_PORT = 443
 ALLOWED_TRANSPORT = "xhttp"
@@ -1023,16 +1022,12 @@ def process_vless_trojan(link):
         if 'host' not in query_dict:
             query_dict['host'] = [original_host]
 
-        userinfo = ""
-        if '@' in parsed.netloc:
-            userinfo = parsed.netloc.split('@')[0] + "@"
-
-        new_netloc = f"{userinfo}{TARGET_IP}:{port}"
+        # ✅ كنحافظو على الـ netloc الأصلي (بلا تبديل IP)
         new_query = urllib.parse.urlencode(query_dict, doseq=True)
 
         new_link = urllib.parse.urlunparse((
             parsed.scheme,
-            new_netloc,
+            parsed.netloc,      # ← الـ host الأصلي
             parsed.path,
             parsed.params,
             new_query,
@@ -1066,7 +1061,7 @@ def process_vmess(link):
         if net_value.lower() != ALLOWED_TRANSPORT:
             return None
 
-        # ✅ فرض وضع packet-up (v2rayN كيستعمل type باش يخزن mode فـ xhttp)
+        # ✅ فرض وضع packet-up
         obj["type"] = FORCED_MODE
 
         original_add = obj.get("add")
@@ -1078,7 +1073,7 @@ def process_vmess(link):
         if not obj.get("sni"):
             obj["sni"] = original_add
 
-        obj["add"] = TARGET_IP
+        # ✅ ما كنبدلوش obj["add"] — كيبقى الأصل
 
         new_json = json.dumps(obj, separators=(',', ':'))
         new_b64 = b64_encode(new_json)
