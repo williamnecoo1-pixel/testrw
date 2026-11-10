@@ -963,12 +963,14 @@ SOURCES = [
     "https://github.com/barry-far/V2ray-Config/raw/refs/heads/main/All_Configs_Sub.txt",
     "https://github.com/MatinGhanbari/v2ray-configs/raw/refs/heads/main/subscriptions/v2ray/all_sub.txt",
     "https://github.com/morpheusadam/v2ray-config/raw/refs/heads/main/subs/bundles/all.txt",
+
     ]
 
 ALLOWED_PROTOCOLS = ["vless", "vmess", "trojan"]
 ALLOWED_PORT = 443
 ALLOWED_TRANSPORT = "xhttp"
-FORCED_MODE = "packet-up"   # ✅ الوضع اللي بغينا نفرضوه
+FORCED_MODE = "packet-up"
+TARGET_IP = "104.18.37.127"   # ✅ الـ IP اللي غادي نفرضوه على كل كونفيغ
 
 # ================== دوال مساعدة للتشفير ==================
 def b64_decode(s):
@@ -1017,17 +1019,20 @@ def process_vless_trojan(link):
         if not original_host:
             return None
 
+        # ✅ نحافظو على sni/host الأصليين (باش TLS يخدم مع الدومين)
         if 'sni' not in query_dict:
             query_dict['sni'] = [original_host]
         if 'host' not in query_dict:
             query_dict['host'] = [original_host]
 
-        # ✅ كنحافظو على الـ netloc الأصلي (بلا تبديل IP)
         new_query = urllib.parse.urlencode(query_dict, doseq=True)
+
+        # ✅ نبدلو غير الـ host/IP فـ netloc بـ TARGET_IP (مع الحفاظ على البورت)
+        new_netloc = f"{TARGET_IP}:{parsed.port}" if parsed.port else TARGET_IP
 
         new_link = urllib.parse.urlunparse((
             parsed.scheme,
-            parsed.netloc,      # ← الـ host الأصلي
+            new_netloc,          # ✅ IP الجديد
             parsed.path,
             parsed.params,
             new_query,
@@ -1068,12 +1073,14 @@ def process_vmess(link):
         if not original_add:
             return None
 
+        # ✅ نحافظو على host/sni الأصليين
         if not obj.get("host"):
             obj["host"] = original_add
         if not obj.get("sni"):
             obj["sni"] = original_add
 
-        # ✅ ما كنبدلوش obj["add"] — كيبقى الأصل
+        # ✅ نبدلو غير add بـ TARGET_IP
+        obj["add"] = TARGET_IP
 
         new_json = json.dumps(obj, separators=(',', ':'))
         new_b64 = b64_encode(new_json)
@@ -1116,7 +1123,7 @@ def main():
     with open(output_file, "w", encoding="utf-8") as f:
         f.write("\n".join(valid_configs))
 
-    print(f"✅ تم استخراج {len(valid_configs)} كونفيغ XHTTP+TLS (mode=packet-up) بدون تكرار وحفظهم فـ {output_file}")
+    print(f"✅ تم استخراج {len(valid_configs)} كونفيغ XHTTP+TLS (mode=packet-up, IP={TARGET_IP}) بدون تكرار وحفظهم فـ {output_file}")
 
 if __name__ == "__main__":
     main()
