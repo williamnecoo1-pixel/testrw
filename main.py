@@ -998,7 +998,12 @@ def process_vless_trojan(link):
     try:
         parsed = urllib.parse.urlparse(link)
 
-        port = parsed.port or 443
+        # ✅ حماية من بورت غير صالح
+        try:
+            port = parsed.port or 443
+        except ValueError:
+            return None
+
         if port != ALLOWED_PORT:
             return None
 
@@ -1027,12 +1032,22 @@ def process_vless_trojan(link):
 
         new_query = urllib.parse.urlencode(query_dict, doseq=True)
 
-        # ✅ نبدلو غير الـ host/IP فـ netloc بـ TARGET_IP (مع الحفاظ على البورت)
-        new_netloc = f"{TARGET_IP}:{parsed.port}" if parsed.port else TARGET_IP
+        # ✅✅ الحل: نحافظو على الـ UUID/password (اللي كاين قبل @)
+        userinfo = ""
+        if parsed.username:
+            userinfo = parsed.username
+            if parsed.password:
+                userinfo += f":{parsed.password}"
+            userinfo += "@"
+
+        # ✅ نبدلو غير الـ host/IP بـ TARGET_IP مع الحفاظ على الـ userinfo
+        new_netloc = f"{userinfo}{TARGET_IP}"
+        if parsed.port:
+            new_netloc += f":{parsed.port}"
 
         new_link = urllib.parse.urlunparse((
             parsed.scheme,
-            new_netloc,          # ✅ IP الجديد
+            new_netloc,          # UUID@104.18.37.127:443
             parsed.path,
             parsed.params,
             new_query,
@@ -1042,6 +1057,7 @@ def process_vless_trojan(link):
     except Exception as e:
         print(f"Error processing VLESS/Trojan {link[:30]}: {e}")
         return None
+
 
 def process_vmess(link):
     try:
@@ -1079,7 +1095,7 @@ def process_vmess(link):
         if not obj.get("sni"):
             obj["sni"] = original_add
 
-        # ✅ نبدلو غير add بـ TARGET_IP
+        # ✅ نبدلو غير add بـ TARGET_IP (الـ id/UUID كيبقى كيفما هو)
         obj["add"] = TARGET_IP
 
         new_json = json.dumps(obj, separators=(',', ':'))
@@ -1090,6 +1106,7 @@ def process_vmess(link):
         print(f"Error processing VMess: {e}")
         return None
 
+
 # ================== السكريبت الرئيسي ==================
 def main():
     all_links = []
@@ -1099,6 +1116,7 @@ def main():
             all_links.extend(content.splitlines())
 
     valid_configs = set()
+    skipped = 0
 
     for link in all_links:
         link = link.strip()
@@ -1112,18 +1130,35 @@ def main():
 
         if protocol == "vmess":
             processed = process_vmess(link)
-            if processed:
-                valid_configs.add(processed)
         elif protocol in ["vless", "trojan"]:
             processed = process_vless_trojan(link)
-            if processed:
-                valid_configs.add(processed)
+        else:
+            processed = None
+
+        if processed:
+            valid_configs.add(processed)
+        else:
+            skipped += 1
 
     output_file = "reality_configs.txt"
     with open(output_file, "w", encoding="utf-8") as f:
         f.write("\n".join(valid_configs))
 
-    print(f"✅ تم استخراج {len(valid_configs)} كونفيغ XHTTP+TLS (mode=packet-up, IP={TARGET_IP}) بدون تكرار وحفظهم فـ {output_file}")
+    # ✅ فحص نهائي: نتأكدو بلي كل vless/trojan فيهم userinfo (UUID/password)
+    missing_userinfo = 0
+    for cfg in valid_configs:
+        if cfg.startswith(("vless://", "trojan://")):
+            if "@" not in cfg.split("?")[0]:
+                missing_userinfo += 1
+
+    print(f"✅ تم استخراج {len(valid_configs)} كونفيغ XHTTP+TLS (mode=packet-up, IP={TARGET_IP})")
+    print(f"📊 تم تخطي {skipped} رابط (ما طابقش الشروط)")
+    if missing_userinfo:
+        print(f"⚠️ تحذير: {missing_userinfo} كونفيغ بلا userinfo (UUID/password)!")
+    else:
+        print("🔒 كل الكونفيغات فيها UUID/password سليم ✅")
+    print(f"💾 حفظوا فـ {output_file}")
+
 
 if __name__ == "__main__":
     main()
