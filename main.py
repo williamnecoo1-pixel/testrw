@@ -6,6 +6,15 @@ import urllib.parse
 
 # ================== الإعدادات ==================
 SOURCES = [
+    "https://github.com/williamnecoo1-pixel/cloud/raw/refs/heads/main/output/akamai-linode.txt",
+    "https://github.com/williamnecoo1-pixel/cloud/raw/refs/heads/main/output/alibaba-cloud.txt",
+    "https://github.com/williamnecoo1-pixel/cloud/raw/refs/heads/main/output/aws.txt",
+    "https://github.com/williamnecoo1-pixel/cloud/raw/refs/heads/main/output/cloudflare.txt",
+    "https://github.com/williamnecoo1-pixel/cloud/raw/refs/heads/main/output/contabo.txt",
+    "https://github.com/williamnecoo1-pixel/cloud/raw/refs/heads/main/output/digitalocean.txt",
+    "https://github.com/williamnecoo1-pixel/cloud/raw/refs/heads/main/output/fastly.txt",
+    "https://github.com/williamnecoo1-pixel/cloud/raw/refs/heads/main/output/vultr.txt",
+    "https://github.com/williamnecoo1-pixel/cloud/raw/refs/heads/main/output/cloudflare.txt",
     "https://github.com/williamnecoo1-pixel/-testeur-X/raw/refs/heads/main/working.txt",
 "https://translate.yandex.ru/translate?url=https://bitbucket.org/igareck/vpn-configs-for-russia/raw/main/Export/v2rayN_PC/BLACK_VLESS_RUS_mobile_v2rayN.txt&lang=de-de",
 "https://raw.githubusercontent.com/drmikecrypto/PulseConfigs/HEAD/secure/configs.txt",
