@@ -6,7 +6,7 @@ import urllib.parse
 
 # ================== الإعدادات ==================
 SOURCES = [
-"https://github.com/williamnecoo1-pixel/-testeur-X/raw/refs/heads/main/working.txt",
+    "https://github.com/williamnecoo1-pixel/-testeur-X/raw/refs/heads/main/working.txt",
 "https://translate.yandex.ru/translate?url=https://bitbucket.org/igareck/vpn-configs-for-russia/raw/main/Export/v2rayN_PC/BLACK_VLESS_RUS_mobile_v2rayN.txt&lang=de-de",
 "https://raw.githubusercontent.com/drmikecrypto/PulseConfigs/HEAD/secure/configs.txt",
 "https://raw.githubusercontent.com/sakha1370/OpenRay/main/output_iran/iran_top100.txt",
@@ -963,8 +963,7 @@ SOURCES = [
     "https://github.com/barry-far/V2ray-Config/raw/refs/heads/main/All_Configs_Sub.txt",
     "https://github.com/MatinGhanbari/v2ray-configs/raw/refs/heads/main/subscriptions/v2ray/all_sub.txt",
     "https://github.com/morpheusadam/v2ray-config/raw/refs/heads/main/subs/bundles/all.txt",
-
-    ]
+]
 
 ALLOWED_PROTOCOLS = ["vless", "vmess", "trojan"]
 ALLOWED_PORT = 443
@@ -1019,6 +1018,9 @@ def process_vless_trojan(link):
 
         # ✅ فرض وضع packet-up
         query_dict['mode'] = [FORCED_MODE]
+
+        # ✅ إزالة parameter extra (HTTP Extra) من الكونفيغ
+        query_dict.pop('extra', None)
 
         original_host = parsed.hostname
         if not original_host:
@@ -1084,6 +1086,9 @@ def process_vmess(link):
 
         # ✅ فرض وضع packet-up
         obj["type"] = FORCED_MODE
+
+        # ✅ إزالة parameter extra (HTTP Extra) إن وجد
+        obj.pop("extra", None)
 
         original_add = obj.get("add")
         if not original_add:
