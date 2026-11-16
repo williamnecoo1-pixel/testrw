@@ -6,6 +6,7 @@ import urllib.parse
 
 # ================== الإعدادات ==================
 SOURCES = [
+    "https://github.com/whoahaow/rjsxrd/raw/refs/heads/main/githubmirror/bypass/bypass-all.txt",
     "https://github.com/williamnecoo1-pixel/cloud/raw/refs/heads/main/output/akamai-linode.txt",
     "https://github.com/williamnecoo1-pixel/cloud/raw/refs/heads/main/output/alibaba-cloud.txt",
     "https://github.com/williamnecoo1-pixel/cloud/raw/refs/heads/main/output/aws.txt",
