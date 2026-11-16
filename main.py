@@ -7,6 +7,10 @@ import urllib.parse
 # ================== الإعدادات ==================
 SOURCES = [
     "https://github.com/whoahaow/rjsxrd/raw/refs/heads/main/githubmirror/bypass/bypass-all.txt",
+    "https://github.com/0xRadikal/Free-v2ray-Configs/raw/refs/heads/main/all/configs.txt",
+    "https://github.com/TelegaVPN/free-vpn-keys/raw/refs/heads/main/sub/v2raytun/all.txt",
+    "https://github.com/lanzm/MetaFetch/raw/refs/heads/master/list.txt",
+    "https://github.com/10Dream/sub-mod/raw/refs/heads/main/sub/split/xhttp.txt",
     "https://github.com/williamnecoo1-pixel/cloud/raw/refs/heads/main/output/akamai-linode.txt",
     "https://github.com/williamnecoo1-pixel/cloud/raw/refs/heads/main/output/alibaba-cloud.txt",
     "https://github.com/williamnecoo1-pixel/cloud/raw/refs/heads/main/output/aws.txt",
